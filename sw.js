@@ -1,6 +1,6 @@
 /* Ramure — service worker : fonctionnement hors ligne.
    Incrémenter VERSION à chaque mise à jour publiée. */
-const VERSION = 'ramure-v2.0.0';
+const VERSION = 'ramure-v2.1.0';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 
 self.addEventListener('install', e => {

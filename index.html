@@ -258,6 +258,7 @@ body.zen #panel,body.zen #actionbar,body.zen #legend,body.zen #zoombar{display:n
           <div class="frow"><label>Forme</label><select id="tShape" class="field"></select></div>
           <div class="btns"><button class="btn" id="tCopy" title="Ctrl+Alt+C">Copier le style</button><button class="btn" id="tPaste" title="Ctrl+Alt+V">Coller le style</button><button class="btn" id="tReset">Réinitialiser</button></div>
           <h3>Marqueurs</h3><div class="chips" id="pMarkers"></div>
+          <h3>Position</h3><div id="pPos"></div>
           <h3>Encadré et résumé</h3><div id="pGroups"></div>
           <h3>Liens entre sujets</h3>
           <button class="btn" id="pAddRel">Relier à un autre sujet…</button>
@@ -415,7 +416,15 @@ function lum(c) { const [r, g, b] = rgb(c); return (0.299 * r + 0.587 * g + 0.11
 function textOn(c) { return lum(c) > 0.62 ? '#1D2433' : '#FFFFFF'; }
 function mix(a, b, t) { const A = rgb(a), B = rgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
 function walk(n, f, parent = null, depth = 0) { f(n, parent, depth); for (const c of n.children) walk(c, f, n, depth + 1); }
-function findNode(id) { let r = null; walk(doc.root, (n, p, d) => { if (!r && n.id === id) r = { n, p, d }; }); return r; }
+const allRoots = () => [doc.root, ...(doc.floats || [])];
+function walkAll(f) { walk(doc.root, f); for (const fl of (doc.floats || [])) walk(fl, f, null, 1); }
+function findNode(id) {
+  let r = null;
+  walk(doc.root, (n, p, d) => { if (!r && n.id === id) r = { n, p, d }; });
+  if (!r) for (const fl of (doc.floats || [])) { walk(fl, (n, p, d) => { if (!r && n.id === id) r = { n, p, d, float: fl }; }, null, 1); if (r) break; }
+  return r;
+}
+const isFloatRoot = id => (doc.floats || []).some(f => f.id === id);
 function countDesc(n) { let c = 0; walk(n, () => c++); return c - 1; }
 function subtreeIds(n) { const s = new Set(); walk(n, x => s.add(x.id)); return s; }
 function cloneNew(n) {
@@ -449,7 +458,7 @@ function defaultStyle() {
 }
 function newDoc(key) {
   const t = TEMPLATES[key] || TEMPLATES.blank;
-  return { app: 'ramure', version: 2, id: 'd' + uid(), title: t.title, structure: t.structure, style: defaultStyle(), root: t.build(), rels: [], created: Date.now(), updated: Date.now() };
+  return { app: 'ramure', version: 2, id: 'd' + uid(), title: t.title, structure: t.structure, style: defaultStyle(), root: t.build(), floats: [], rels: [], created: Date.now(), updated: Date.now() };
 }
 function cleanFont(f) {
   f = String(f || '').replace(/[<>"\\;{}]/g, '').slice(0, 200).trim();
@@ -486,6 +495,7 @@ function normalize(d) {
     const o = { id: (typeof n.id === 'string' && ID_RE.test(n.id) && !seen.has(n.id)) ? n.id : uid(), text: String(n.text ?? ''), children: [] };
     seen.add(o.id); if (n.id) gmap[n.id] = o.id;
     if (n.collapsed) o.collapsed = true;
+    if (n.offset && isFinite(n.offset.dx) && isFinite(n.offset.dy) && (n.offset.dx || n.offset.dy)) o.offset = { dx: clamp(+n.offset.dx, -1e5, 1e5), dy: clamp(+n.offset.dy, -1e5, 1e5) };
     if (n.note) o.note = String(n.note);
     if (typeof n.color === 'string' && COLOR_RE.test(n.color)) o.color = hex6(n.color);
     if (Array.isArray(n.markers)) { const m = [...new Set(n.markers.filter(x => MK[x]))]; if (m.length) o.markers = m; }
@@ -520,12 +530,17 @@ function normalize(d) {
     return o;
   };
   const root = fix(d.root || { text: 'Sujet central' });
+  const floats = (Array.isArray(d.floats) ? d.floats : []).slice(0, 200).map(f => {
+    const o = fix(f); const p = f && f.pos;
+    o.pos = (p && isFinite(p.x) && isFinite(p.y)) ? { x: clamp(+p.x, -1e5, 1e5), y: clamp(+p.y, -1e5, 1e5) } : { x: 0, y: 0 };
+    delete o.offset; return o;
+  });
   const rels = (Array.isArray(d.rels) ? d.rels : []).map(r => r && ({ id: (typeof r.id === 'string' && ID_RE.test(r.id)) ? r.id : uid(), from: gmap[r.from] || r.from, to: gmap[r.to] || r.to, label: r.label ? oneLine(r.label).slice(0, 80) : undefined }))
     .filter(r => r && seen.has(r.from) && seen.has(r.to) && r.from !== r.to);
   return {
     app: 'ramure', version: 2, id: (typeof d.id === 'string' && ID_RE.test(d.id)) ? d.id : 'd' + uid(),
     title: String(d.title || oneLine(root.text) || 'Sans titre').slice(0, 120), structure: STRUCTURES[d.structure] ? d.structure : 'mindmap',
-    style: normalizeStyle(d.style), root, rels, created: d.created || Date.now(), updated: d.updated || Date.now()
+    style: normalizeStyle(d.style), root, floats, rels, created: d.created || Date.now(), updated: d.updated || Date.now()
   };
 }
 
@@ -638,7 +653,7 @@ function layout() {
   const S = doc.style, ST = doc.structure;
   const prep = (n, depth, parent, color, i, num) => {
     const s = look(n, depth);
-    const disp = (S.numbering && depth > 0 ? num + ' ' : '') + (n.text || '');
+    const disp = (S.numbering && depth > 0 && num ? num + ' ' : '') + (n.text || '');
     let c;
     if (depth === 0) c = S.colorMode === 'single' ? S.single : (S.levels.root.fill === 'none' ? S.edge : S.levels.root.fillColor);
     else if (depth === 1) c = n.color || (S.colorMode === 'single' ? S.single : S.palette[i % S.palette.length]);
@@ -698,58 +713,67 @@ function layout() {
     }
     e.box = b;
   };
-  if (org) {
-    const sw = e => {
-      for (const k of e.kids) sw(k);
-      if (!e.kids.length) return (e.sw = e.w);
-      extras(e, k => k.sw);
-      const t = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sw + e.post[i], 0) + ogx() * (e.kids.length - 1);
-      return (e.sw = Math.max(e.w, t));
-    };
-    const placeO = (e, cx, y) => {
-      e.side = 0; e.x = cx - e.w / 2; e.y = y;
-      if (e.kids.length) {
-        const tot = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sw + e.post[i], 0) + ogx() * (e.kids.length - 1);
-        let x = cx - tot / 2; const ny = y + e.h + ogy();
-        e.kids.forEach((k, i) => { x += e.pre[i]; placeO(k, x + k.sw / 2, ny); x += k.sw + e.post[i] + ogx(); });
-      }
-      finishBox(e);
-    };
-    sw(R); placeO(R, 0, 0);
-  } else {
-    const sh = e => {
-      for (const k of e.kids) sh(k);
-      if (!e.kids.length) return (e.sh = e.h);
-      extras(e, k => k.sh);
-      const t = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sh + e.post[i], 0) + vgap(e) * (e.kids.length - 1);
-      return (e.sh = Math.max(e.h, t));
-    };
-    const band = (e, k) => e.pre[k.idx] + k.sh + e.post[k.idx];
-    const placeKids = (e, kids, dir) => {
-      if (!kids.length) return;
-      const g = vgap(e);
-      const tot = kids.reduce((a, k) => a + band(e, k), 0) + g * (kids.length - 1);
-      let y = e.y + e.h / 2 - tot / 2;
-      const ex = dir > 0 ? e.x + e.w + hgap(e) : e.x - hgap(e);
-      for (const k of kids) { y += e.pre[k.idx]; placeH(k, ex, y + k.sh / 2, dir); y += k.sh + e.post[k.idx] + g; }
-    };
-    const placeH = (e, edgeX, cy, dir) => {
-      e.side = dir; e.x = dir > 0 ? edgeX : edgeX - e.w; e.y = cy - e.h / 2;
-      placeKids(e, e.kids, dir); finishBox(e);
-    };
-    if (ST === 'mindmap') {
-      sh(R);
-      R.x = -R.w / 2; R.y = -R.h / 2; R.side = 1;
-      const total = R.kids.reduce((a, k) => a + band(R, k), 0);
-      let acc = 0, nr = 0;
-      for (const k of R.kids) { const bk = band(R, k); if (nr === 0 || acc + bk / 2 <= total / 2) { acc += bk; nr++; } else break; }
-      placeKids(R, R.kids.slice(0, nr), 1);
-      placeKids(R, R.kids.slice(nr), -1);
-      finishBox(R);
-    } else { sh(R); placeH(R, 0, 0, ST === 'causes' ? -1 : 1); }
-  }
-  const b = R.box;
-  BB = { minX: b.x1 - 16, minY: b.y1 - 16, maxX: b.x2 + 16, maxY: b.y2 + 16 };
+  const off = e => e.n.offset || { dx: 0, dy: 0 };
+  const sw = e => {
+    for (const k of e.kids) sw(k);
+    if (!e.kids.length) return (e.sw = e.w);
+    extras(e, k => k.sw);
+    const t = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sw + e.post[i], 0) + ogx() * (e.kids.length - 1);
+    return (e.sw = Math.max(e.w, t));
+  };
+  const placeO = (e, cx, y) => {
+    const o = off(e);
+    e.side = 0; e.x = cx - e.w / 2 + o.dx; e.y = y + o.dy;
+    if (e.kids.length) {
+      const tot = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sw + e.post[i], 0) + ogx() * (e.kids.length - 1);
+      let x = e.x + e.w / 2 - tot / 2; const ny = e.y + e.h + ogy();
+      e.kids.forEach((k, i) => { x += e.pre[i]; placeO(k, x + k.sw / 2, ny); x += k.sw + e.post[i] + ogx(); });
+    }
+    finishBox(e);
+  };
+  const sh = e => {
+    for (const k of e.kids) sh(k);
+    if (!e.kids.length) return (e.sh = e.h);
+    extras(e, k => k.sh);
+    const t = e.kids.reduce((a, k, i) => a + e.pre[i] + k.sh + e.post[i], 0) + vgap(e) * (e.kids.length - 1);
+    return (e.sh = Math.max(e.h, t));
+  };
+  const band = (e, k) => e.pre[k.idx] + k.sh + e.post[k.idx];
+  const placeKids = (e, kids, dir) => {
+    if (!kids.length) return;
+    const g = vgap(e);
+    const tot = kids.reduce((a, k) => a + band(e, k), 0) + g * (kids.length - 1);
+    let y = e.y + e.h / 2 - tot / 2;
+    const ex = dir > 0 ? e.x + e.w + hgap(e) : e.x - hgap(e);
+    for (const k of kids) { y += e.pre[k.idx]; placeH(k, ex, y + k.sh / 2, dir); y += k.sh + e.post[k.idx] + g; }
+  };
+  const placeH = (e, edgeX, cy, dir) => {
+    const o = off(e);
+    e.side = dir; e.x = (dir > 0 ? edgeX : edgeX - e.w) + o.dx; e.y = cy - e.h / 2 + o.dy;
+    placeKids(e, e.kids, dir); finishBox(e);
+  };
+  if (org) { sw(R); placeO(R, 0, 0); }
+  else if (ST === 'mindmap') {
+    sh(R);
+    const o = off(R);
+    R.x = -R.w / 2 + o.dx; R.y = -R.h / 2 + o.dy; R.side = 1;
+    const total = R.kids.reduce((a, k) => a + band(R, k), 0);
+    let acc = 0, nr = 0;
+    for (const k of R.kids) { const bk = band(R, k); if (nr === 0 || acc + bk / 2 <= total / 2) { acc += bk; nr++; } else break; }
+    placeKids(R, R.kids.slice(0, nr), 1);
+    placeKids(R, R.kids.slice(nr), -1);
+    finishBox(R);
+  } else { sh(R); placeH(R, 0, 0, ST === 'causes' ? -1 : 1); }
+  let box = R.box;
+  (doc.floats || []).forEach((f, fi) => {
+    const E = prep(f, 1, null, null, doc.root.children.length + fi, '');
+    E.isFloat = true;
+    const p = f.pos || { x: 0, y: 0 };
+    if (org) { sw(E); placeO(E, p.x, p.y - E.h / 2); }
+    else { sh(E); const dir = ST === 'causes' ? -1 : 1; placeH(E, dir > 0 ? p.x - E.w / 2 : p.x + E.w / 2, p.y, dir); }
+    box = union(box, E.box);
+  });
+  BB = { minX: box.x1 - 16, minY: box.y1 - 16, maxX: box.x2 + 16, maxY: box.y2 + 16 };
 }
 
 /* ================= Rendu SVG ================= */
@@ -959,7 +983,11 @@ function renderOverlay() {
       else { const xx = t.mode === 'before' ? e.x - 8 : e.x + e.w + 8; o += `<path d="M${r1(xx)},${r1(e.y)} V${r1(e.y + e.h)}" stroke="${sc}" stroke-width="3" stroke-linecap="round" pointer-events="none"/>`; }
     }
     const d = L.get(drag.id);
-    if (d && drag.wx != null) o += `<rect x="${r1(drag.wx - d.w / 2)}" y="${r1(drag.wy - d.h / 2)}" width="${d.w}" height="${d.h}" rx="${r1(Math.min(d.s.r, d.h / 2))}" fill="${sc}" fill-opacity=".18" stroke="${sc}" stroke-width="1.5" pointer-events="none"/>`;
+    if (d && drag.wx != null) {
+      if (!t && d.box) { const b = d.box; o += `<rect x="${r1(b.x1 + drag.dx - 6)}" y="${r1(b.y1 + drag.dy - 6)}" width="${r1(b.x2 - b.x1 + 12)}" height="${r1(b.y2 - b.y1 + 12)}" rx="10" fill="none" stroke="${sc}" stroke-width="1.2" stroke-dasharray="4 4" pointer-events="none"/>`; }
+      o += `<rect x="${r1(d.x + drag.dx)}" y="${r1(d.y + drag.dy)}" width="${d.w}" height="${d.h}" rx="${r1(Math.min(d.s.r, d.h / 2))}" fill="${sc}" fill-opacity=".18" stroke="${sc}" stroke-width="1.5" pointer-events="none"/>`;
+      if (!t && drag.detach && !drag.isMain) o += `<text x="${r1(d.x + drag.dx)}" y="${r1(d.y + drag.dy - 8)}" font-family="${esc(doc.style.font)}" font-size="12" font-weight="600" fill="${sc}">Détacher en sujet libre</text>`;
+    }
   }
   $('#lOver').innerHTML = o;
 }
@@ -1028,7 +1056,13 @@ function insertParent(id) {
 }
 function deleteNode(id) {
   const r = findNode(id); if (!r) return;
-  if (!r.p) { toast('Le sujet central ne peut pas être supprimé.'); return; }
+  if (!r.p) {
+    if (!r.float) { toast('Le sujet central ne peut pas être supprimé.'); return; }
+    pushHistory(); const ids = subtreeIds(r.n);
+    doc.floats = doc.floats.filter(f => f !== r.n);
+    doc.rels = doc.rels.filter(x => !ids.has(x.from) && !ids.has(x.to));
+    sel = doc.root.id; changed(); return;
+  }
   pushHistory();
   const sib = r.p.children, i = sib.indexOf(r.n), ids = subtreeIds(r.n);
   sib.splice(i, 1);
@@ -1061,19 +1095,50 @@ function toggleCollapse(id) {
 }
 function setAllCollapsed(mode) {
   pushHistory();
-  walk(doc.root, (n, p, d) => { if (mode === 'expand') delete n.collapsed; else if (d === 1 && n.children.length) n.collapsed = true; });
+  walkAll((n, p, d) => { if (mode === 'expand') delete n.collapsed; else if (d === 1 && n.children.length) n.collapsed = true; });
   if (mode !== 'expand' && sel) { const c = doc.root.children.find(c => subtreeIds(c).has(sel)); if (c) sel = c.id; }
   changed(); fit();
 }
 function moveNode(id, targetId, mode) {
   const src = findNode(id), tgt = findNode(targetId);
-  if (!src || !tgt || !src.p || subtreeIds(src.n).has(targetId)) return;
+  if (!src || !tgt || (!src.p && !src.float) || subtreeIds(src.n).has(targetId)) return;
   pushHistory();
-  src.p.children.splice(src.p.children.indexOf(src.n), 1); cleanupGroups(src.p);
+  if (src.p) { src.p.children.splice(src.p.children.indexOf(src.n), 1); cleanupGroups(src.p); }
+  else doc.floats = doc.floats.filter(f => f !== src.n);
+  delete src.n.pos; delete src.n.offset;
   if (mode === 'child' || !findNode(targetId).p) { tgt.n.collapsed = false; tgt.n.children.push(src.n); }
   else { const tp = findNode(targetId).p; const i = tp.children.indexOf(tgt.n); tp.children.splice(mode === 'before' ? i : i + 1, 0, src.n); }
   sel = id; changed();
 }
+function freeDrop(id, dx, dy, detachIt) {
+  const r = findNode(id); if (!r) return;
+  pushHistory();
+  if (r.float && !r.p) { r.n.pos = { x: r.n.pos.x + dx, y: r.n.pos.y + dy }; }
+  else if (detachIt && r.p) { const e = L.get(id); doDetach(r, { x: e.x + e.w / 2 + dx, y: e.y + e.h / 2 + dy }); }
+  else {
+    const o = r.n.offset || { dx: 0, dy: 0 };
+    const nx = o.dx + dx, ny = o.dy + dy;
+    if (Math.abs(nx) < 2 && Math.abs(ny) < 2) delete r.n.offset; else r.n.offset = { dx: nx, dy: ny };
+  }
+  sel = id; changed();
+}
+function doDetach(r, pos) {
+  r.p.children.splice(r.p.children.indexOf(r.n), 1); cleanupGroups(r.p);
+  delete r.n.offset; r.n.pos = pos;
+  (doc.floats = doc.floats || []).push(r.n);
+}
+function detachNode(id) {
+  const r = findNode(id); if (!r || !r.p) return;
+  const e = L.get(id);
+  pushHistory(); doDetach(r, { x: BB.maxX + 80 + e.w / 2, y: e.y + e.h / 2 }); sel = id; changed(); ensureVisible(id);
+  toast('Sujet détaché. Glisse-le sur un sujet pour le rattacher.');
+}
+function createFloat(pt) {
+  pushHistory(); const n = mk(doc.structure === 'causes' ? 'Fait' : 'Sujet libre'); n.pos = { x: pt.x, y: pt.y };
+  (doc.floats = doc.floats || []).push(n); sel = n.id; changed(); startEdit(n.id);
+}
+function realign(id) { const r = findNode(id); if (!r || !r.n.offset) return; pushHistory(); delete r.n.offset; changed(); }
+function realignAll() { pushHistory(); walkAll(n => { delete n.offset; }); changed(); fit(); toast('Toutes les positions manuelles ont été annulées.'); }
 function setStructure(s) { if (!STRUCTURES[s] || doc.structure === s) return; pushHistory(); doc.structure = s; syncHeader(); changed(); fit(); }
 function groupOf(nodeId, key) {
   const r = findNode(nodeId); if (!r || !r.p) return null;
@@ -1178,7 +1243,7 @@ function commitEdit() {
     if (r && v && v !== orig) {
       pushHistory(); r.n.text = v;
       const autoTitle = !doc.title || doc.title === oneLine(orig) || Object.values(TEMPLATES).some(t => t.title === doc.title);
-      if (!r.p && autoTitle && !fileHandle) { doc.title = oneLine(v).slice(0, 80); syncHeader(); }
+      if (r.n === doc.root && autoTitle && !fileHandle) { doc.title = oneLine(v).slice(0, 80); syncHeader(); }
       changed();
     } else render();
   }
@@ -1247,7 +1312,7 @@ cv.addEventListener('pointerdown', ev => {
     if (linkFrom) { finishLink(id); gesture = null; return; }
     if (sel !== id) select(id);
     gesture = { type: 'node', id, sx: p.x, sy: p.y, moved: false, touch: ev.pointerType === 'touch', armed: false, vx: view.x, vy: view.y };
-    if (gesture.touch && id !== doc.root.id) gesture.timer = setTimeout(() => { if (gesture && gesture.type === 'node' && !gesture.moved) { gesture.armed = true; try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} } }, 380);
+    if (gesture.touch) gesture.timer = setTimeout(() => { if (gesture && gesture.type === 'node' && !gesture.moved) { gesture.armed = true; try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} } }, 380);
   } else gesture = { type: 'pan', sx: p.x, sy: p.y, vx: view.x, vy: view.y, moved: false };
 });
 cv.addEventListener('pointermove', ev => {
@@ -1266,16 +1331,21 @@ cv.addEventListener('pointermove', ev => {
   if (gesture.type === 'group' && far) { gesture.type = 'pan'; gesture.moved = true; }
   if (gesture.type === 'node' && !gesture.moved && far) {
     gesture.moved = true; clearTimeout(gesture.timer);
-    const canDrag = gesture.id !== doc.root.id && (!gesture.touch || gesture.armed);
-    if (canDrag) { drag = { id: gesture.id, active: true, ex: subtreeIds(findNode(gesture.id).n), target: null }; gesture.type = 'drag'; }
+    const canDrag = !gesture.touch || gesture.armed;
+    if (canDrag) {
+      const isMain = gesture.id === doc.root.id;
+      drag = { id: gesture.id, active: true, isMain, ex: subtreeIds(findNode(gesture.id).n), target: null, w0: toWorld({ x: gesture.sx, y: gesture.sy }), dx: 0, dy: 0 };
+      gesture.type = 'drag';
+    }
     else gesture.type = 'pan';
   }
   if (gesture.type === 'pan') {
     if (far) gesture.moved = true;
     if (gesture.moved) { view.x = gesture.vx + dx; view.y = gesture.vy + dy; applyView(); }
   } else if (gesture.type === 'drag' && drag) {
-    const w = toWorld(p); drag.wx = w.x; drag.wy = w.y;
-    drag.target = dropTargetAt(w.x, w.y, drag.ex); renderOverlay();
+    const w = toWorld(p); drag.wx = w.x; drag.wy = w.y; drag.dx = w.x - drag.w0.x; drag.dy = w.y - drag.w0.y;
+    drag.detach = ev.shiftKey;
+    drag.target = drag.isMain ? null : dropTargetAt(w.x, w.y, drag.ex); renderOverlay();
   }
 });
 function endPointer(ev) {
@@ -1286,7 +1356,12 @@ function endPointer(ev) {
   clearTimeout(gesture.timer);
   const g = gesture; gesture = null;
   if (ev.type === 'pointercancel') { drag = null; renderOverlay(); return; }
-  if (g.type === 'drag' && drag) { const t = drag.target, id = drag.id; drag = null; if (t) moveNode(id, t.id, t.mode); else renderOverlay(); }
+  if (g.type === 'drag' && drag) {
+    const t = drag.target, id = drag.id, dx = drag.dx, dy = drag.dy, det = ev.shiftKey; drag = null;
+    if (t) moveNode(id, t.id, t.mode);
+    else if (Math.hypot(dx, dy) < 3) renderOverlay();
+    else freeDrop(id, dx, dy, det);
+  }
   else if (g.type === 'node' && !g.moved) tapKey('n:' + g.id, () => startEdit(g.id));
   else if (g.type === 'group') {
     const v = g.kind === 'sum' ? SUMS.get(g.id) : BNDS.get(g.id);
@@ -1294,7 +1369,11 @@ function endPointer(ev) {
       if (!v) return; const host = findNode(v.pid); const first = host && host.n.children[(g.kind === 'sum' ? v.s : v.bd).i];
       if (first) { select(first.id); togglePanel(true); setTab('topic'); }
     });
-  } else if (g.type === 'pan' && !g.moved) { if (linkFrom) cancelLink(); else if (sel) select(null); }
+  } else if (g.type === 'pan' && !g.moved) {
+    if (linkFrom) { cancelLink(); return; }
+    const pt = toWorld(local(ev));
+    tapKey('bg', () => createFloat(pt), () => { if (sel) select(null); });
+  }
 }
 cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', endPointer);
@@ -1423,7 +1502,7 @@ function updatePanel() {
   const r = sel ? findNode(sel) : null;
   $('#pEmpty').style.display = r ? 'none' : 'block';
   $('#pBody').style.display = r ? 'block' : 'none';
-  let count = 0; walk(doc.root, () => count++);
+  let count = 0; walkAll(() => count++);
   $('#pStats').textContent = `${STRUCTURES[doc.structure]} · ${count} sujet${count > 1 ? 's' : ''} · ${doc.rels.length} lien${doc.rels.length > 1 ? 's' : ''}`;
   if (!r) return;
   const n = r.n, e = L.get(n.id), act = document.activeElement;
@@ -1451,6 +1530,12 @@ function updatePanel() {
   $('#tShape').value = o.shape || '';
   for (const b of $('#pMarkers').children) b.classList.toggle('on', (n.markers || []).includes(b.dataset.m));
   renderGroupsPanel(r);
+  let ph = '<div class="btns">';
+  if (r.float && !r.p) ph += `<span class="small muted">Sujet libre : glisse-le sur un sujet pour le rattacher à la carte.</span>`;
+  if (n.offset) ph += `<button class="btn" data-pos="realign">Réaligner ce sujet</button>`;
+  if (r.p) ph += `<button class="btn" data-pos="detach">Détacher en sujet libre</button>`;
+  ph += `</div><div class="small muted">Glisse un sujet dans le vide pour le déplacer librement (Maj enfoncée : le détacher). Double-clic dans le vide : nouveau sujet libre.</div>`;
+  $('#pPos').innerHTML = ph;
   const ul = $('#pRels'); ul.innerHTML = '';
   for (const rel of doc.rels.filter(x => x.from === n.id || x.to === n.id)) {
     const other = findNode(rel.from === n.id ? rel.to : rel.from);
@@ -1522,6 +1607,7 @@ function buildTopicPanel() {
   $('#tCopy').addEventListener('click', copyStyle);
   $('#tPaste').addEventListener('click', pasteStyle);
   $('#tReset').addEventListener('click', () => { if (!sel) return; const r = findNode(sel); pushHistory(); delete r.n.style; changed(); });
+  $('#pPos').addEventListener('click', e => { const b = e.target.closest('[data-pos]'); if (!b || !sel) return; if (b.dataset.pos === 'realign') realign(sel); else detachNode(sel); });
   $('#pGroups').addEventListener('click', e => {
     if (!sel) return; const a = e.target.closest('[data-ga]'), x = e.target.closest('[data-gx]');
     if (a) { ({ bnd: () => addBoundary(sel), sum: () => addSummary(sel), bndAll: () => addBoundary(sel, true), sumAll: () => addSummary(sel, true) })[a.dataset.ga](); return; }
@@ -1704,6 +1790,7 @@ function renderOutline(focusId) {
     if (!n.collapsed) n.children.forEach(c => rec(c, d + 1));
   };
   rec(doc.root, 0);
+  if ((doc.floats || []).length) { h += '<div class="small muted" style="margin:18px 6px 6px;text-transform:uppercase;letter-spacing:.6px">Sujets libres</div>'; for (const f of doc.floats) rec(f, 1); }
   outl.innerHTML = h + '<p class="small muted" style="margin:18px 6px">Entrée : nouveau sujet · Tab / Maj+Tab : décaler · Alt+↑/↓ : déplacer · Retour arrière sur une ligne vide : supprimer · Ctrl+E : revenir à la carte</p></div>';
   for (const t of outl.querySelectorAll('.otx')) grow(t);
   if (focusId) focusOutline(focusId);
@@ -1754,7 +1841,7 @@ function closeSearch() { $('#searchbar').classList.remove('show'); search = { q:
 function runSearch(q) {
   search.q = q; search.hits = []; search.i = 0;
   const f = fold(q.trim());
-  if (f) walk(doc.root, n => { const hay = fold([n.text, n.note, (n.labels || []).join(' ')].join(' ')); if (hay.includes(f)) search.hits.push(n.id); });
+  if (f) walkAll(n => { const hay = fold([n.text, n.note, (n.labels || []).join(' ')].join(' ')); if (hay.includes(f)) search.hits.push(n.id); });
   $('#sCount').textContent = f ? (search.hits.length ? `1/${search.hits.length}` : '0') : '';
   if (search.hits.length) gotoHit(0); else renderOverlay();
 }
@@ -1762,7 +1849,7 @@ function gotoHit(i) {
   if (!search.hits.length) return;
   search.i = (i + search.hits.length) % search.hits.length;
   const id = search.hits[search.i];
-  let ch = false; walk(doc.root, (n) => { if (n.collapsed && subtreeIds(n).has(id) && n.id !== id) { n.collapsed = false; ch = true; } });
+  let ch = false; walkAll((n) => { if (n.collapsed && subtreeIds(n).has(id) && n.id !== id) { n.collapsed = false; ch = true; } });
   sel = id; render(); centerOn(id);
   $('#sCount').textContent = `${search.i + 1}/${search.hits.length}`;
   if (ch) scheduleDraft();
@@ -2030,8 +2117,9 @@ async function importXmind(buf, base) {
         return n;
       };
       const root = conv(sh.rootTopic);
+      const floats = ((sh.rootTopic.children && sh.rootTopic.children.detached) || []).map((t, i) => { const f = conv(t); const p = t.position; f.pos = (p && isFinite(p.x) && isFinite(p.y)) ? { x: +p.x, y: +p.y } : { x: 400, y: 200 + i * 80 }; return f; });
       const rels = (sh.relationships || []).map(r => ({ from: idMap[r.end1Id], to: idMap[r.end2Id], label: r.title })).filter(r => r.from && r.to);
-      sheets.push({ title: sh.title && sh.title !== 'Map' && sh.title !== 'Carte' ? sh.title : oneLine(root.text), structure: XM_STRUCT(sh.rootTopic.structureClass), style: xmindTheme(sh.theme) || defaultStyle(), root, rels });
+      sheets.push({ title: sh.title && sh.title !== 'Map' && sh.title !== 'Carte' ? sh.title : oneLine(root.text), structure: XM_STRUCT(sh.rootTopic.structureClass), style: xmindTheme(sh.theme) || defaultStyle(), root, floats, rels });
     }
   } else if (z.has('content.xml')) {
     const x = new DOMParser().parseFromString(await z.text('content.xml'), 'text/xml');
@@ -2115,6 +2203,7 @@ function toMarkdown() {
   s += '\n';
   const rec = (n, d) => { s += '  '.repeat(d) + '- ' + oneLine(n.text) + fact(n) + '\n'; if (n.note) s += n.note.split('\n').map(l => '  '.repeat(d + 1) + '> ' + l).join('\n') + '\n'; for (const c of n.children) rec(c, d + 1); };
   for (const c of R.children) rec(c, 0);
+  if ((doc.floats || []).length) { s += '\n## Sujets libres\n\n'; for (const f of doc.floats) rec(f, 0); }
   return s;
 }
 function toOPML() {
@@ -2170,7 +2259,9 @@ function toXmindContent() {
     }
     return t;
   };
-  return [{ id: 'sheet-' + doc.id, class: 'sheet', title: doc.title, rootTopic: rec(doc.root, true), relationships: doc.rels.map(r => ({ id: r.id, end1Id: r.from, end2Id: r.to, ...(r.label ? { title: r.label } : {}) })) }];
+  const rt = rec(doc.root, true);
+  if ((doc.floats || []).length) { rt.children = rt.children || {}; rt.children.detached = doc.floats.map(f => ({ ...rec(f, false), position: { x: Math.round(f.pos.x), y: Math.round(f.pos.y) } })); }
+  return [{ id: 'sheet-' + doc.id, class: 'sheet', title: doc.title, rootTopic: rt, relationships: doc.rels.map(r => ({ id: r.id, end1Id: r.from, end2Id: r.to, ...(r.label ? { title: r.label } : {}) })) }];
 }
 function exportXmind() {
   const files = [
@@ -2190,7 +2281,7 @@ function buildMenu() {
     `<div class="sec">Fichier</div>` + it('new', 'Nouvelle carte…') + it('open', 'Ouvrir / importer…', 'Ctrl+O') + it('save', 'Enregistrer', 'Ctrl+S') + it('saveas', 'Enregistrer sous…', 'Ctrl+Maj+S') + it('drafts', 'Brouillons sur cet appareil…') +
     `<div class="sec">Exporter</div>` + it('png', 'Image PNG') + it('pdf', 'PDF (A4)') + it('svg', 'Image vectorielle SVG') + it('xmind', 'Fichier XMind (.xmind)') + it('md', 'Markdown') + it('opml', 'OPML') + it('copyimg', 'Copier l’image') + it('copytxt', 'Copier le plan (texte)') +
     `<div class="sec">Structure</div>` + Object.entries(STRUCTURES).map(([k, v]) => it('st:' + k, v, '', S === k)).join('') +
-    `<div class="sec">Affichage</div>` + it('style', 'Style de la carte…') + it('outline', outlineOn ? 'Revenir à la carte' : 'Mode plan', 'Ctrl+E') + it('search', 'Rechercher', 'Ctrl+F') + it('zen', 'Mode concentration', 'Ctrl+.') + it('expand', 'Tout déplier') + it('collapse', 'Replier au niveau 1') + it('theme', uiTheme === 'dark' ? 'Interface claire' : 'Interface sombre') +
+    `<div class="sec">Affichage</div>` + it('style', 'Style de la carte…') + it('outline', outlineOn ? 'Revenir à la carte' : 'Mode plan', 'Ctrl+E') + it('search', 'Rechercher', 'Ctrl+F') + it('zen', 'Mode concentration', 'Ctrl+.') + it('realignall', 'Réaligner toute la carte') + it('expand', 'Tout déplier') + it('collapse', 'Replier au niveau 1') + it('theme', uiTheme === 'dark' ? 'Interface claire' : 'Interface sombre') +
     `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide');
 }
 function openMenu() { buildMenu(); menu.classList.add('open'); }
@@ -2211,7 +2302,7 @@ menu.addEventListener('click', async e => {
     opml: () => downloadBlob(new Blob([toOPML()], { type: 'text/x-opml' }), safeName(doc.title) + '.opml'),
     copyimg: copyImage, copytxt: copyText,
     style: () => { togglePanel(true); setTab('style'); }, outline: () => toggleOutline(), search: openSearch, zen: toggleZen,
-    expand: () => setAllCollapsed('expand'), collapse: () => setAllCollapsed('collapse'),
+    realignall: realignAll, expand: () => setAllCollapsed('expand'), collapse: () => setAllCollapsed('collapse'),
     theme: () => setUiTheme(uiTheme === 'dark' ? 'light' : 'dark'),
     install: () => { if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; } },
     help: showHelp
@@ -2253,9 +2344,11 @@ function showHelp() {
     ['Ctrl+K', 'Lien web sur le sujet'], ['Ctrl+Maj+L', 'Relier à un autre sujet'], ['Ctrl+F', 'Rechercher'], ['Ctrl+E', 'Mode plan'], ['Ctrl+.', 'Mode concentration'],
     ['Ctrl+Z, Ctrl+Y', 'Annuler, rétablir'], ['Ctrl+S, Ctrl+O', 'Enregistrer, ouvrir'], ['Ctrl+0', 'Ajuster à l’écran'],
     ['Molette', 'Faire défiler (Ctrl+molette : zoom)'], ['Glisser un sujet', 'Le déplacer : haut/bas d’un sujet = avant/après, centre = en sous-sujet'],
+    ['Glisser dans le vide', 'Déplacer librement la branche (elle reste rattachée)'], ['Maj + glisser dans le vide', 'Détacher en sujet libre'],
+    ['Double-clic dans le vide', 'Créer un sujet libre'], ['Glisser un sujet libre sur un sujet', 'Le rattacher à la carte'],
     ['Double-clic', 'Sur un résumé ou un titre d’encadré : le modifier']
   ];
-  const touch = [['Toucher', 'Sélectionner'], ['Double toucher', 'Modifier le texte'], ['Appui long puis glisser', 'Déplacer un sujet'], ['Deux doigts', 'Zoomer'], ['Barre du bas', 'Ajouter, modifier, plier, supprimer']];
+  const touch = [['Toucher', 'Sélectionner'], ['Double toucher', 'Modifier le texte'], ['Appui long puis glisser', 'Déplacer un sujet (sur un autre sujet : rattacher ; dans le vide : déplacer librement)'], ['Double toucher dans le vide', 'Créer un sujet libre'], ['Deux doigts', 'Zoomer'], ['Barre du bas', 'Ajouter, modifier, plier, supprimer']];
   const tr = r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`;
   showModal('Raccourcis et aide',
     `<table class="keys">${rows.map(tr).join('')}</table><h3 style="margin:18px 0 6px;font-size:14px">Sur tablette et téléphone</h3><table class="keys">${touch.map(tr).join('')}</table>` +

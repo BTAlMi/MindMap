@@ -40,6 +40,14 @@ Le bouton palette ouvre le panneau, qui a deux onglets :
   - espacement, largeur du texte, alignement, numérotation.
 - **Sujet :** fond, texte, bordure, taille, gras, italique, barré et forme d'un sujet précis. Le style se copie d'un sujet à l'autre avec Ctrl+Alt+C / Ctrl+Alt+V.
 
+## Déplacer les sujets
+
+- **Glisser un sujet sur un autre :** il devient son sous-sujet (en haut ou en bas du sujet visé : il se place avant ou après).
+- **Glisser un sujet dans le vide :** il se déplace librement avec sa branche et reste rattaché. Menu → « Réaligner toute la carte » remet tout en place.
+- **Maj + glisser dans le vide :** il se détache en sujet libre.
+- **Double-clic dans le vide :** crée un nouveau sujet libre.
+- **Glisser un sujet libre sur un sujet :** il se rattache à la carte.
+
 ## Formats acceptés
 
 - **Ouverture :** `.ramure`, `.xmind` (XMind 8 et versions récentes ; le thème et les styles sont repris), Markdown, texte indenté, OPML.
