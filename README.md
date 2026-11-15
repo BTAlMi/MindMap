@@ -26,7 +26,7 @@ Ramure est une application de cartes mentales et d'arbres des causes. Elle fonct
 
 ## Publier une mise à jour
 
-Remplace les fichiers dans le dépôt, puis augmente `VERSION` dans `sw.js` (par exemple `ramure-v2.0.1`). Les appareils récupèrent la nouvelle version au deuxième lancement.
+Remplace les fichiers dans le dépôt, puis augmente `VERSION` dans `sw.js` (par exemple `ramure-v3.0.1`). Les appareils récupèrent la nouvelle version dès le rechargement suivant (version visible en bas du Menu).
 
 ## Personnaliser
 
@@ -48,7 +48,19 @@ Le bouton palette ouvre le panneau, qui a deux onglets :
 - **Double-clic dans le vide :** crée un nouveau sujet libre.
 - **Glisser un sujet libre sur un sujet :** il se rattache à la carte.
 
+## Feuilles (onglets)
+
+Un fichier `.ramure` peut contenir plusieurs feuilles, présentées en onglets en bas à gauche de l'écran (en haut sur téléphone).
+
+- **Créer :** le bouton « + », ou Ctrl+Alt+N.
+- **Renommer :** double-clic sur l'onglet.
+- **Autres actions :** clic droit sur l'onglet, ou appui long sur tablette :
+  - dupliquer, déplacer, supprimer ;
+  - enregistrer la feuille en fichier séparé ;
+  - créer une nouvelle feuille à partir du sujet sélectionné. La branche part dans la nouvelle feuille, et le sujet d'origine garde un lien vers elle.
+
 ## Formats acceptés
 
-- **Ouverture :** `.ramure`, `.xmind` (XMind 8 et versions récentes ; le thème et les styles sont repris), Markdown, texte indenté, OPML.
-- **Export :** PNG, PDF A4, SVG, XMind, Markdown, OPML, et copie de l'image ou du plan dans le presse-papiers.
+- **Ouverture :** `.ramure`, `.xmind` (XMind 8 et versions récentes). De XMind sont repris toutes les feuilles, le thème, les styles, les images, les bulles, les liens entre sujets et les marqueurs. Également : Markdown, texte indenté, OPML.
+- **Export :** PNG, JPEG, PDF A4, SVG, XMind (toutes les feuilles, avec les images), Markdown, OPML, et copie de l'image ou du plan dans le presse-papiers.
+- **Présentation :** F5 lance un diaporama : une vue d'ensemble, puis une diapo par branche principale.
