@@ -59,6 +59,20 @@ Un fichier `.ramure` peut contenir plusieurs feuilles, présentées en onglets e
   - enregistrer la feuille en fichier séparé ;
   - créer une nouvelle feuille à partir du sujet sélectionné. La branche part dans la nouvelle feuille, et le sujet d'origine garde un lien vers elle.
 
+## Onglets de fichiers
+
+Chaque fichier s'ouvre dans son propre onglet, en haut de l'écran, comme dans un navigateur. Ouvrir un fichier ne remplace donc plus la carte en cours.
+
+- **Changer de fichier :** clic sur l'onglet. Chaque onglet garde son propre historique d'annulation.
+- **Nouvelle carte :** le « + » ouvre une nouvelle carte dans un nouvel onglet.
+- **Fermer :** la croix, ou un clic molette sur l'onglet. Si des modifications ne sont pas enregistrées dans un fichier, Ramure te le propose avant de fermer.
+- **Au redémarrage :** les onglets ouverts sont rouverts.
+- **Rouvrir un fichier déjà ouvert :** Ramure bascule simplement sur son onglet.
+
+## Fusionner des fichiers
+
+Menu → **Fusionner un fichier (ajouter ses feuilles)…** ajoute toutes les feuilles d'un autre fichier (`.xmind`, `.ramure`, Markdown, OPML) à la suite de celles du fichier ouvert. Sur PC, tu peux aussi glisser le fichier sur la carte en tenant la touche Maj enfoncée. La fusion s'annule avec Ctrl+Z.
+
 ## Formats acceptés
 
 - **Ouverture :** `.ramure`, `.xmind` (XMind 8 et versions récentes). De XMind sont repris toutes les feuilles, le thème, les styles, les images, les bulles, les liens entre sujets et les marqueurs. Également : Markdown, texte indenté, OPML.

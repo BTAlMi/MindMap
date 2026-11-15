@@ -2,7 +2,7 @@
    Page principale : réseau d'abord (les mises à jour arrivent dès le premier rechargement),
    copie en cache si hors ligne. Autres fichiers : cache d'abord.
    Incrémenter VERSION à chaque mise à jour publiée. */
-const VERSION = 'ramure-v3.0.1';
+const VERSION = 'ramure-v3.2.0';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 
 self.addEventListener('install', e => {

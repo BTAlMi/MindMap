@@ -23,7 +23,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-#app{display:grid;grid-template-rows:auto 1fr;grid-template-columns:minmax(0,1fr);height:100%;height:100dvh}
+#app{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:minmax(0,1fr);height:100%;height:100dvh}
 #topbar{min-width:0;display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);min-height:50px;position:relative;z-index:30}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;margin-right:6px;white-space:nowrap}
 .brand svg{width:26px;height:26px;flex:none}
@@ -146,6 +146,20 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--line2);border-ra
 #mlegend.show{display:flex}
 #mlegend .lg{display:flex;align-items:center;gap:8px}
 .lightbox img{max-width:100%;max-height:75vh;display:block;margin:auto;border-radius:8px}
+/* Onglets de fichiers */
+#topbar{grid-row:1}
+#main{grid-row:3}
+#filetabs{grid-row:2;display:flex;align-items:flex-end;gap:2px;padding:4px 8px 0;background:var(--bg);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:thin;min-height:36px}
+#filetabs.hide{display:none}
+#filetabs .ft{display:flex;align-items:center;gap:6px;max-width:220px;padding:6px 6px 6px 12px;border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;background:transparent;color:var(--muted);font-size:13px;white-space:nowrap;cursor:pointer;flex:none}
+#filetabs .ft span.n{overflow:hidden;text-overflow:ellipsis}
+#filetabs .ft.on{background:var(--panel);border-color:var(--line);color:var(--text);font-weight:600;margin-bottom:-1px;padding-bottom:7px}
+#filetabs .ft:hover:not(.on){background:var(--panel);opacity:.85}
+#filetabs .ft i{width:7px;height:7px;border-radius:50%;background:#F08C00;flex:none}
+#filetabs .ft b{border:0;background:transparent;color:var(--muted);font-weight:400;border-radius:5px;width:20px;height:20px;line-height:20px;text-align:center;flex:none}
+#filetabs .ft b:hover{background:var(--line);color:var(--text)}
+#filetabs .fadd{border:0;background:transparent;font-size:18px;color:var(--muted);padding:2px 10px 6px;border-radius:8px;cursor:pointer}
+#filetabs .fadd:hover{background:var(--panel);color:var(--text)}
 /* Barre flottante */
 #fbar{display:none;padding:3px;gap:0;z-index:16}
 #fbar.show{display:flex}
@@ -259,6 +273,7 @@ body.zen #panel,body.zen #actionbar,body.zen #legend,body.zen #zoombar{display:n
     <button class="tb primary" id="bMenu" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="hide-sm">Menu</span></button>
     <div id="menu" role="menu"></div>
   </header>
+  <nav id="filetabs" aria-label="Fichiers ouverts"></nav>
   <div id="main">
     <div id="stage">
       <svg id="canvas" tabindex="0" aria-label="Carte">
@@ -2083,7 +2098,7 @@ $('#stage').addEventListener('drop', ev => {
     const w = toWorld(local(ev)); let id = sel;
     for (const [nid, e] of L) if (w.x >= e.x && w.x <= e.x + e.w && w.y >= e.y && w.y <= e.y + e.h) id = nid;
     if (id) attachImage(id, f); else toast('Dépose l’image sur un sujet.');
-  } else openFromFile(f, null);
+  } else { mergeMode = !!ev.shiftKey; openFromFile(f, null); }
 });
 window.addEventListener('resize', () => applyView());
 
@@ -2553,6 +2568,7 @@ function updateButtons() {
   $('#bOutline').classList.toggle('on', outlineOn);
 }
 function updateStatus() {
+  renderFileTabs();
   const s = $('#status');
   s.classList.toggle('dirty', dirty);
   s.textContent = fileName ? fileName : (dirty ? 'Non enregistré dans un fichier' : 'Nouveau');
@@ -2692,7 +2708,11 @@ function rememberHandle() { if (fileHandle && book) IDB.put('h', book.id, fileHa
 function restoreHandle(expectedName) {
   if (IN_FRAME || !expectedName || !('showSaveFilePicker' in window)) return;
   const id = book.id;
-  IDB.get('h', id).then(h => { if (h && book && book.id === id && !fileHandle && h.name === expectedName) { fileHandle = h; updateStatus(); } });
+  IDB.get('h', id).then(h => {
+    if (!h || h.name !== expectedName) return;
+    if (book && book.id === id) { if (!fileHandle) { fileHandle = h; updateStatus(); } return; }
+    const t = tabs.find((x, i) => x && i !== activeTab && x.book.id === id); if (t && !t.fileHandle) t.fileHandle = h;
+  });
 }
 async function ensurePermission(h) {
   if (!h.queryPermission) return true;
@@ -2700,6 +2720,79 @@ async function ensurePermission(h) {
   if (p !== 'granted') p = await h.requestPermission({ mode: 'readwrite' });
   return p === 'granted';
 }
+/* ================= Onglets de fichiers ================= */
+let tabs = [], activeTab = 0;
+function snapshotTab() {
+  const sv = new Map(sheetViews); if (doc) sv.set(doc.id, { ...view });
+  return { book, fileHandle, fileName, dirty, undoStack, redoStack, sheetViews: sv, sel };
+}
+function restoreTab(t) {
+  if (editing) cancelEdit();
+  cancelLink(); if (linkPick) cancelPick();
+  book = t.book; book.active = clamp(book.active || 0, 0, book.sheets.length - 1); doc = book.sheets[book.active];
+  fileHandle = t.fileHandle; fileName = t.fileName; dirty = t.dirty; undoStack = t.undoStack; redoStack = t.redoStack; lastHK = null;
+  sheetViews.clear(); for (const [k, v] of t.sheetViews) sheetViews.set(k, v);
+  sel = t.sel; clearMulti(); focusId = null; search = { q: '', hits: [], i: 0 };
+  syncHeader(); render();
+  if (sel && !findNode(sel)) sel = doc.root.id;
+  const v = sheetViews.get(doc.id); if (v) { view = { ...v }; applyView(); } else fit();
+  if (outlineOn) renderOutline(sel);
+  updateStatus();
+}
+const liveTab = i => i === activeTab ? { book, dirty, fileName, fileHandle } : tabs[i];
+function saveTabList() { if (!book) return; LS.set('ramure:tabs', JSON.stringify(tabs.map((t, i) => liveTab(i).book.id))); LS.set('ramure:tabActive', String(activeTab)); }
+function switchTab(i) {
+  if (i === activeTab || !tabs[i]) return;
+  if (editing) commitEdit();
+  clearTimeout(draftTimer); saveDraft();
+  tabs[activeTab] = snapshotTab(); activeTab = i; restoreTab(tabs[i]);
+  renderFileTabs(); saveTabList();
+}
+function isPristine() { return book && !fileHandle && !fileName && !dirty && !undoStack.length && book.sheets.length === 1 && countDesc(doc.root) <= 1 && !(doc.floats || []).length; }
+function openInNewTab(d, opts = {}) {
+  const id = d && typeof d.id === 'string' ? d.id : null;
+  if (id && book) {
+    const j = tabs.findIndex((t, i) => liveTab(i) && liveTab(i).book.id === id);
+    if (j >= 0 && j !== activeTab) { switchTab(j); toast('Ce fichier est déjà ouvert dans un onglet.'); return; }
+    if (j === activeTab && opts.handle) { /* rechargement du même fichier : on remplace */ setDoc(d, opts); tabs[activeTab] = snapshotTab(); renderFileTabs(); saveTabList(); return; }
+  }
+  if (book && !isPristine()) { if (editing) commitEdit(); clearTimeout(draftTimer); saveDraft(); tabs[activeTab] = snapshotTab(); tabs.push(null); activeTab = tabs.length - 1; }
+  setDoc(d, opts);
+  tabs[activeTab] = snapshotTab(); renderFileTabs(); saveTabList();
+}
+function closeTab(i, force) {
+  const t = liveTab(i); if (!t) return;
+  if (!force && t.dirty && (t.fileHandle || !t.fileName)) {
+    if (i !== activeTab) switchTab(i);
+    showModal('Fermer l’onglet', `<p>« ${esc(book.title)} » contient des modifications qui ne sont pas enregistrées dans un fichier. Une copie reste dans les brouillons de cet appareil.</p><div class="btns" style="margin-top:12px"><button class="btn primary" id="ctSave">Enregistrer puis fermer</button><button class="btn danger" id="ctClose">Fermer sans enregistrer</button><button class="btn" id="ctCancel">Annuler</button></div>`, b => {
+      b.querySelector('#ctCancel').onclick = closeModal;
+      b.querySelector('#ctClose').onclick = () => { closeModal(); closeTab(activeTab, true); };
+      b.querySelector('#ctSave').onclick = async () => { closeModal(); await saveFile(false); if (!dirty) closeTab(activeTab, true); };
+    });
+    return;
+  }
+  if (i === activeTab) { clearTimeout(draftTimer); saveDraft(); }
+  tabs.splice(i, 1);
+  if (!tabs.length) { tabs = [null]; activeTab = 0; book = null; setDoc(newDoc('blank')); tabs[0] = snapshotTab(); }
+  else if (i === activeTab) { activeTab = Math.min(i, tabs.length - 1); restoreTab(tabs[activeTab]); }
+  else if (i < activeTab) activeTab--;
+  renderFileTabs(); saveTabList();
+}
+function renderFileTabs() {
+  const ft = $('#filetabs'); if (!ft || !book) return;
+  ft.classList.toggle('hide', tabs.length <= 1 && window.innerWidth < 760);
+  ft.innerHTML = tabs.map((_, i) => { const t = liveTab(i); if (!t) return ''; const unsaved = t.dirty && (t.fileHandle || !t.fileName);
+    return `<div class="ft${i === activeTab ? ' on' : ''}" data-ti="${i}" title="${esc(t.book.title)}${t.fileName ? ' — ' + esc(t.fileName) : ''}">${unsaved ? '<i></i>' : ''}<span class="n">${esc(t.book.title || 'Sans titre')}</span><b data-tclose="${i}" title="Fermer l’onglet">✕</b></div>`; }).join('') +
+    `<button class="fadd" id="ftAdd" title="Nouvel onglet (nouvelle carte)">+</button>`;
+}
+$('#filetabs').addEventListener('click', e => {
+  const c = e.target.closest('[data-tclose]'); if (c) { e.stopPropagation(); closeTab(+c.dataset.tclose); return; }
+  if (e.target.closest('#ftAdd')) { showTemplates(); return; }
+  const t = e.target.closest('[data-ti]'); if (t) switchTab(+t.dataset.ti);
+});
+$('#filetabs').addEventListener('auxclick', e => { const t = e.target.closest('[data-ti]'); if (t && e.button === 1) { e.preventDefault(); closeTab(+t.dataset.ti); } });
+window.addEventListener('resize', () => renderFileTabs());
+
 function setDoc(d, opts = {}) {
   if (editing) cancelEdit();
   cancelLink();
@@ -2739,12 +2832,32 @@ async function saveFile(as) {
   }
   if (downloadBlob(new Blob([data], { type: 'application/json' }), name)) { fileName = name; dirty = false; updateStatus(); saveDraft(); toast('Fichier téléchargé : ' + name + ' — dépose-le dans OneDrive.'); }
 }
-async function openFile() {
+let mergeMode = false;
+function mergeFile() { mergeMode = true; openFile(true); }
+function mergeIntoBook(d, label) {
+  const inc = normalizeBook(d).sheets;
+  pushHistory();
+  const used = new Set(book.sheets.map(x => x.id)), remap = {};
+  for (const sh of inc) { if (used.has(sh.id)) { const nid = 's' + uid(); remap[sh.id] = nid; sh.id = nid; } used.add(sh.id); }
+  const fix = n => { if (n.tlink && remap[n.tlink.s]) n.tlink = { s: remap[n.tlink.s], n: n.tlink.n }; n.children.forEach(fix); };
+  const names = new Set(book.sheets.map(x => x.title));
+  for (const sh of inc) { fix(sh.root); (sh.floats || []).forEach(fix); if (names.has(sh.title)) sh.title = `${sh.title} (${label})`.slice(0, 60); names.add(sh.title); }
+  const first = book.sheets.length;
+  book.sheets.push(...inc); dirty = true;
+  switchSheet(first);
+  toast(`${inc.length} feuille${inc.length > 1 ? 's' : ''} ajoutée${inc.length > 1 ? 's' : ''} depuis « ${label} ».`);
+}
+function deliver(d, label) {
+  if (mergeMode) { mergeMode = false; mergeIntoBook(d, label); return true; }
+  openInNewTab(d, { dirty: true }); return false;
+}
+async function openFile(merge) {
+  if (!merge) mergeMode = false;
   if (!IN_FRAME && 'showOpenFilePicker' in window) {
     try {
       const [h] = await window.showOpenFilePicker({ multiple: false, types: [{ description: 'Cartes et plans', accept: { 'application/json': ['.ramure', '.json'], 'application/octet-stream': ['.xmind'], 'text/plain': ['.md', '.markdown', '.txt', '.opml'] } }], excludeAcceptAllOption: false });
       await openFromFile(await h.getFile(), h);
-    } catch (e) { if (e && e.name !== 'AbortError') toast('Ouverture impossible : ' + (e.message || e)); }
+    } catch (e) { mergeMode = false; if (e && e.name !== 'AbortError') toast('Ouverture impossible : ' + (e.message || e)); }
     return;
   }
   const fi = $('#fileInput'); fi.value = ''; fi.click();
@@ -2759,14 +2872,15 @@ async function openFromFile(f, handle) {
     const text = await f.text();
     if (ext === 'ramure' || ext === 'json' || /^\s*\{/.test(text)) {
       const d = JSON.parse(text); if (!d || (!d.root && !Array.isArray(d.sheets))) throw new Error('fichier non reconnu');
-      setDoc(d, { handle: ext === 'ramure' ? handle : null, name: ext === 'ramure' ? name : null }); rememberHandle();
+      if (mergeMode) { mergeMode = false; mergeIntoBook(d, base); return; }
+      openInNewTab(d, { handle: ext === 'ramure' ? handle : null, name: ext === 'ramure' ? name : null }); rememberHandle();
       toast('Ouvert : ' + name); return;
     }
     if (ext === 'opml' || /^\s*<\?xml|^\s*<opml/i.test(text)) { importOPML(text, base); return; }
     importOutlineText(text, base);
-  } catch (e) { toast('Import impossible : ' + (e.message || e)); }
+  } catch (e) { mergeMode = false; toast('Import impossible : ' + (e.message || e)); }
 }
-if ('launchQueue' in window) { try { window.launchQueue.setConsumer(async p => { if (p.files && p.files.length) { const h = p.files[0]; await openFromFile(await h.getFile(), h); } }); } catch (e) {} }
+if ('launchQueue' in window) { try { window.launchQueue.setConsumer(async p => { if (p.files && p.files.length) { const h = p.files[0]; mergeMode = false; await openFromFile(await h.getFile(), h); } }); } catch (e) {} }
 
 /* ================= Imports ================= */
 function cleanMd(s) { return s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/^\[[ xX]\]\s+/, '').trim(); }
@@ -2800,7 +2914,7 @@ function importOutlineText(text, base) {
   const roots = parseOutline(text);
   if (!roots.length) { toast('Aucun contenu exploitable.'); return; }
   const root = roots.length === 1 ? roots[0] : mk(base || 'Import', roots);
-  setDoc({ title: base || oneLine(root.text), structure: 'mindmap', style: defaultStyle(), root, rels: [] }, { dirty: true });
+  if (deliver({ title: base || oneLine(root.text), structure: 'mindmap', style: defaultStyle(), root, rels: [] }, base || 'texte')) return;
   toast('Importé : ' + (base || 'texte'));
 }
 function importOPML(text, base) {
@@ -2812,7 +2926,7 @@ function importOPML(text, base) {
   if (!tops.length) throw new Error('OPML vide');
   const te = x.getElementsByTagName('title')[0]; const t = (te && te.textContent.trim()) || base;
   const root = tops.length === 1 ? tops[0] : mk(t || 'Import', tops);
-  setDoc({ title: t || oneLine(root.text), structure: 'mindmap', style: defaultStyle(), root }, { dirty: true });
+  if (deliver({ title: t || oneLine(root.text), structure: 'mindmap', style: defaultStyle(), root }, t || 'OPML')) return;
   toast('Importé : ' + (t || 'OPML'));
 }
 async function readZip(buf) {
@@ -2977,7 +3091,7 @@ async function importXmind(buf, base) {
       im.n.image = { src: `data:${mime};base64,${btoa(bin)}`, w: clamp(w, 40, 640), ratio: clamp(h / w, 0.1, 10) };
     } catch (e) {}
   }
-  setDoc({ title: base, sheets }, { dirty: true });
+  if (deliver({ title: base, sheets }, base)) return;
   toast(`Importé depuis XMind : ${base} (${sheets.length} feuille${sheets.length > 1 ? 's' : ''})`);
   return;
   const open = s => {};
@@ -3174,13 +3288,13 @@ function buildMenu() {
   const S = doc ? doc.structure : 'mindmap';
   const it = (act, label, kbd = '', on = false) => `<button data-act="${act}" class="${on ? 'on' : ''}"><span>${label}</span>${kbd ? `<kbd>${kbd}</kbd>` : ''}</button>`;
   menu.innerHTML =
-    `<div class="sec">Fichier</div>` + it('new', 'Nouvelle carte…') + it('open', 'Ouvrir / importer…', 'Ctrl+O') + it('save', 'Enregistrer', 'Ctrl+S') + it('saveas', 'Enregistrer sous…', 'Ctrl+Maj+S') + it('drafts', 'Brouillons sur cet appareil…') +
+    `<div class="sec">Fichier</div>` + it('new', 'Nouvelle carte (nouvel onglet)…') + it('open', 'Ouvrir / importer…', 'Ctrl+O') + it('merge', 'Fusionner un fichier (ajouter ses feuilles)…') + it('save', 'Enregistrer', 'Ctrl+S') + it('saveas', 'Enregistrer sous…', 'Ctrl+Maj+S') + it('closetab', 'Fermer l’onglet') + it('drafts', 'Brouillons sur cet appareil…') +
     `<div class="sec">Édition</div>` + it('dup', 'Dupliquer', 'Ctrl+D') + it('single', 'Supprimer en gardant les enfants', 'Ctrl+Retour') + it('focusb', focusId ? 'Quitter la branche isolée' : 'Isoler la branche', 'Ctrl+;') + it('selall', 'Tout sélectionner', 'Ctrl+A') + it('center', 'Aller au sujet central', 'Origine') +
     `<div class="sec">Feuilles</div>` + it('sheetnew', 'Nouvelle feuille', 'Ctrl+Alt+N') + it('sheetdup', 'Dupliquer cette feuille') + it('sheetren', 'Renommer cette feuille') + it('sheetfrom', 'Nouvelle feuille à partir du sujet') + it('sheetdel', 'Supprimer cette feuille') +
     `<div class="sec">Exporter</div>` + it('png', 'Image PNG') + it('jpg', 'Image JPEG') + it('pdf', 'PDF (A4)') + it('svg', 'Image vectorielle SVG') + it('xmind', 'Fichier XMind (.xmind)') + it('md', 'Markdown') + it('opml', 'OPML') + it('copyimg', 'Copier l’image') + it('copytxt', 'Copier le plan (texte)') +
     `<div class="sec">Structure</div>` + Object.entries(STRUCTURES).map(([k, v]) => it('st:' + k, v, '', S === k)).join('') +
     `<div class="sec">Affichage</div>` + it('present', 'Présenter (diaporama)', 'F5') + it('style', 'Style de la carte…') + it('legend', 'Légende des marqueurs…') + it('outline', outlineOn ? 'Revenir à la carte' : 'Mode plan', 'Ctrl+E') + it('search', 'Rechercher', 'Ctrl+F') + it('zen', 'Mode concentration', 'Ctrl+.') + it('realignall', 'Réaligner toute la carte') + it('expand', 'Tout déplier') + it('collapse', 'Replier au niveau 1') + it('theme', uiTheme === 'dark' ? 'Interface claire' : 'Interface sombre') +
-    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.0.1</div>`;
+    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.2</div>`;
 }
 function openMenu() { buildMenu(); menu.classList.add('open'); }
 function closeMenu() { menu.classList.remove('open'); }
@@ -3192,7 +3306,7 @@ menu.addEventListener('click', async e => {
   if (a.startsWith('st:')) return setStructure(a.slice(3));
   const err = er => toast('Export impossible : ' + er.message);
   ({
-    new: showTemplates, open: openFile, save: () => saveFile(false), saveas: () => saveFile(true), drafts: showDrafts,
+    new: showTemplates, open: () => openFile(false), merge: mergeFile, closetab: () => closeTab(activeTab), save: () => saveFile(false), saveas: () => saveFile(true), drafts: showDrafts,
     png: () => exportPNG().catch(err), jpg: () => exportJPEG().catch(err), present: startPresentation, legend: showLegendEditor, pdf: () => exportPDF().catch(err),
     svg: () => downloadBlob(new Blob([exportSVG().svg], { type: 'image/svg+xml' }), exportBase() + '.svg'),
     xmind: exportXmind,
@@ -3208,7 +3322,7 @@ menu.addEventListener('click', async e => {
     help: showHelp
   })[a]();
 });
-function showModal(title, html, mount) { $('#mTitle').textContent = title; const b = $('#mBody'); b.innerHTML = html; $('#modal').classList.add('open'); if (mount) mount(b); }
+function showModal(title, html, mount) { $('#mTitle').textContent = title; const host = $('#mBody'); host.innerHTML = ''; const b = document.createElement('div'); b.innerHTML = html; host.appendChild(b); $('#modal').classList.add('open'); if (mount) mount(b); }
 function closeModal() { $('#modal').classList.remove('open'); $('#mBody').innerHTML = ''; }
 $('#mClose').addEventListener('click', closeModal);
 $('#modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') closeModal(); });
@@ -3217,7 +3331,7 @@ function showTemplates(first) {
     (first === true ? `<p class="muted">Cartes mentales et arbres des causes, hors ligne et sans compte. Tes cartes s’enregistrent dans des fichiers <b>.ramure</b> que tu ranges où tu veux (OneDrive pro, par exemple).</p>` : '') +
     `<div class="tpls">${Object.entries(TEMPLATES).map(([k, t]) => `<button class="tpl" data-t="${k}"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></button>`).join('')}</div>` +
     `<p class="small muted" style="margin-top:14px">Tu peux aussi ouvrir un fichier XMind (son thème est repris), ou coller un plan texte ou Markdown (Ctrl+V) dans une carte.</p>`,
-    b => b.addEventListener('click', e => { const t = e.target.closest('[data-t]'); if (t) { closeModal(); setDoc(newDoc(t.dataset.t)); } }));
+    b => b.addEventListener('click', e => { const t = e.target.closest('[data-t]'); if (t) { closeModal(); if (first === true) { setDoc(newDoc(t.dataset.t)); tabs[activeTab] = snapshotTab(); renderFileTabs(); saveTabList(); } else openInNewTab(newDoc(t.dataset.t)); } }));
 }
 function showDrafts() {
   const idx = draftIndex();
@@ -3228,7 +3342,7 @@ function showDrafts() {
     `<div class="btns" style="margin-top:14px"><button class="btn" id="dToggle">${draftsOn ? 'Désactiver les brouillons' : 'Activer les brouillons'}</button>${idx.length ? '<button class="btn danger" id="dClear">Tout effacer</button>' : ''}</div>`,
     b => b.addEventListener('click', e => {
       const o = e.target.closest('[data-o]'), d = e.target.closest('[data-d]');
-      if (o) { loadDraft(o.dataset.o).then(x => { if (x) { closeModal(); setDoc(x.book, { name: x.fileName }); restoreHandle(x.fileName); } }); }
+      if (o) { loadDraft(o.dataset.o).then(x => { if (x) { closeModal(); openInNewTab(x.book, { name: x.fileName }); restoreHandle(x.fileName); } }); }
       else if (d) { deleteDraft(d.dataset.d); showDrafts(); }
       else if (e.target.id === 'dClear') { clearDrafts(); showDrafts(); toast('Brouillons effacés.'); }
       else if (e.target.id === 'dToggle') { draftsOn = !draftsOn; LS.set('ramure:drafts-on', draftsOn ? '1' : '0'); if (!draftsOn) clearDrafts(); else saveDraft(); showDrafts(); }
@@ -3294,7 +3408,7 @@ $('#actionbar').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !sel) return;
   ({ child: () => addChild(sel), sibling: () => addSibling(sel), edit: () => startEdit(sel), fold: () => toggleCollapse(sel), del: () => deleteNode(sel) })[b.dataset.act]();
 });
-window.addEventListener('beforeunload', e => { if (dirty && (!draftsOn || fileHandle)) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { const any = tabs.some((_, i) => { const t = liveTab(i); return t && t.dirty && (!draftsOn || t.fileHandle); }); if (any) { e.preventDefault(); e.returnValue = ''; } });
 window.addEventListener('pagehide', () => { clearTimeout(draftTimer); saveDraft(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(draftTimer); saveDraft(); } });
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
@@ -3304,14 +3418,20 @@ async function init() {
   buildTopicPanel(); buildStylePanel();
   if (window.innerWidth >= 1100 && LS.get('ramure:panel') !== '0') panel.classList.add('open');
   if (IN_FRAME) { const b = $('#banner'); b.textContent = 'Aperçu de test : l’enregistrement de fichiers et les exports sont bloqués ici. N’y mets aucune donnée ENGIE. Utilise la version installée depuis GitHub Pages.'; b.style.display = 'block'; setTimeout(() => b.style.display = 'none', 9000); }
-  const last = draftsOn ? LS.get('ramure:last') : null;
-  const d = last ? await loadDraft(last) : null;
-  if (d) { setDoc(d.book, { name: d.fileName }); restoreHandle(d.fileName); }
-  else { setDoc(newDoc('blank')); showTemplates(true); }
+  let ids = []; try { ids = JSON.parse(LS.get('ramure:tabs') || '[]'); } catch (e) {}
+  if (!ids.length && LS.get('ramure:last')) ids = [LS.get('ramure:last')];
+  if (draftsOn) for (const id of ids.slice(0, 20)) {
+    const d = await loadDraft(id); if (!d) continue;
+    tabs.push(null); activeTab = tabs.length - 1;
+    setDoc(d.book, { name: d.fileName }); tabs[activeTab] = snapshotTab(); restoreHandle(d.fileName);
+  }
+  if (tabs.length) { const want = clamp(parseInt(LS.get('ramure:tabActive'), 10) || 0, 0, tabs.length - 1); if (want !== activeTab) { const cur = activeTab; activeTab = want; restoreTab(tabs[want]); } }
+  else { tabs = [null]; activeTab = 0; setDoc(newDoc('blank')); tabs[0] = snapshotTab(); showTemplates(true); }
+  renderFileTabs(); saveTabList();
   setTab(LS.get('ramure:tab') === 'style' ? 'style' : 'topic');
   cv.focus({ preventScroll: true });
 }
-window.__ramure = { get doc() { return doc; }, get book() { return book; }, switchSheet, addSheet, sheetFromTopic, setDoc, exportSVG, buildPdf, parseOutline, importXmind, toMarkdown, toOPML, toXmindContent, zipStore, readZip, get L() { return L; }, select, get sel() { return sel; }, addBoundary, addSummary, setStyle, applyTheme, toggleOutline, runSearch, get SUMS() { return SUMS; } };
+window.__ramure = { async _merge(f) { mergeMode = true; await openFromFile(f, null); }, async _open(f) { mergeMode = false; await openFromFile(f, null); }, get tabs() { return tabs.map((_, i) => liveTab(i).book.title); }, get activeTab() { return activeTab; }, switchTab, closeTab, get doc() { return doc; }, get book() { return book; }, switchSheet, addSheet, sheetFromTopic, setDoc, exportSVG, buildPdf, parseOutline, importXmind, toMarkdown, toOPML, toXmindContent, zipStore, readZip, get L() { return L; }, select, get sel() { return sel; }, addBoundary, addSummary, setStyle, applyTheme, toggleOutline, runSearch, get SUMS() { return SUMS; } };
 init();
 })();
 </script>
