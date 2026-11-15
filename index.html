@@ -173,11 +173,11 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--line2);border-ra
 #qstyle h4{margin:4px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
 body.zen #fbar,body.zen #sheetbar{display:none!important}
 /* Feuilles */
-#sheetbar{left:12px;bottom:12px;align-items:center;max-width:max(200px, calc(100% - 520px));overflow-x:auto;scrollbar-width:thin}
-#sheetbar .st{border:0;background:transparent;border-radius:8px;padding:6px 12px;white-space:nowrap;font-size:13px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis}
+#sheetbar{left:12px;bottom:12px;align-items:center;max-width:max(160px, calc(50% - 190px));overflow-x:auto;scrollbar-width:thin}
+#sheetbar .st{flex:none;border:0;background:transparent;border-radius:8px;padding:6px 12px;white-space:nowrap;font-size:13px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis}
 #sheetbar .st.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 #sheetbar .st:hover{background:var(--bg)}
-#sheetbar .add{border:0;background:transparent;font-size:18px;line-height:1;padding:4px 10px;color:var(--muted);border-radius:8px}
+#sheetbar .add{flex:none;position:sticky;right:0;border:0;background:var(--panel);font-size:18px;line-height:1;padding:4px 10px;color:var(--muted);border-radius:8px}
 #sheetbar .add:hover{background:var(--bg);color:var(--text)}
 #sheetMenu{position:absolute;display:none;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:5px;min-width:230px}
 #sheetMenu.open{display:block}
@@ -1824,8 +1824,28 @@ const sheetbar = $('#sheetbar'), sheetMenu = $('#sheetMenu');
 function renderSheetbar() {
   if (!book) return;
   sheetbar.innerHTML = book.sheets.map((sh, i) => `<button class="st${i === book.active ? ' on' : ''}" data-si="${i}" title="${esc(sh.title || '')} — double-clic : renommer, clic droit : options">${esc(sh.title || 'Feuille')}</button>`).join('') + `<button class="add" id="shAdd" title="Nouvelle feuille (Ctrl+Alt+N)">+</button>`;
+  layoutBottomBars();
   const on = sheetbar.querySelector('.st.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
+// Évite que la barre des feuilles passe sous la barre d'actions ou le zoom (bureau)
+const MQ_SM = window.matchMedia('(max-width:760px)');
+function layoutBottomBars() {
+  const ab = $('#actionbar'), zb = $('#zoombar'), host = sheetbar.parentElement;
+  sheetbar.style.maxWidth = ''; ab.style.bottom = '';
+  if (MQ_SM.matches || !host) return;
+  const H = host.getBoundingClientRect(), gap = 12;
+  const abVis = getComputedStyle(ab).display !== 'none';
+  const zbVis = zb && getComputedStyle(zb).display !== 'none';
+  const right = zbVis ? zb.getBoundingClientRect().left - H.left - gap : H.width - gap;
+  const beside = abVis ? ab.getBoundingClientRect().left - H.left - gap * 2 : right - gap;
+  const need = sheetbar.scrollWidth;
+  if (!abVis || need <= beside) { sheetbar.style.maxWidth = Math.max(160, beside) + 'px'; return; }
+  // Pas assez de place à côté : la barre des feuilles prend toute la largeur, la barre d'actions passe au-dessus
+  sheetbar.style.maxWidth = Math.max(160, right - gap) + 'px';
+  ab.style.bottom = (gap + sheetbar.offsetHeight + 8) + 'px';
+}
+new ResizeObserver(() => layoutBottomBars()).observe(sheetbar.parentElement);
+MQ_SM.addEventListener('change', layoutBottomBars);
 function openSheetMenu(i, x, y) {
   const n = book.sheets.length;
   sheetMenu.innerHTML = `<button data-sm="rename">Renommer</button><button data-sm="dup">Dupliquer</button><button data-sm="new">Nouvelle feuille</button><button data-sm="fromTopic"${sel ? '' : ' disabled'}>Nouvelle feuille à partir du sujet sélectionné</button><hr>` +
@@ -3294,7 +3314,7 @@ function buildMenu() {
     `<div class="sec">Exporter</div>` + it('png', 'Image PNG') + it('jpg', 'Image JPEG') + it('pdf', 'PDF (A4)') + it('svg', 'Image vectorielle SVG') + it('xmind', 'Fichier XMind (.xmind)') + it('md', 'Markdown') + it('opml', 'OPML') + it('copyimg', 'Copier l’image') + it('copytxt', 'Copier le plan (texte)') +
     `<div class="sec">Structure</div>` + Object.entries(STRUCTURES).map(([k, v]) => it('st:' + k, v, '', S === k)).join('') +
     `<div class="sec">Affichage</div>` + it('present', 'Présenter (diaporama)', 'F5') + it('style', 'Style de la carte…') + it('legend', 'Légende des marqueurs…') + it('outline', outlineOn ? 'Revenir à la carte' : 'Mode plan', 'Ctrl+E') + it('search', 'Rechercher', 'Ctrl+F') + it('zen', 'Mode concentration', 'Ctrl+.') + it('realignall', 'Réaligner toute la carte') + it('expand', 'Tout déplier') + it('collapse', 'Replier au niveau 1') + it('theme', uiTheme === 'dark' ? 'Interface claire' : 'Interface sombre') +
-    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.2</div>`;
+    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.2.1</div>`;
 }
 function openMenu() { buildMenu(); menu.classList.add('open'); }
 function closeMenu() { menu.classList.remove('open'); }
