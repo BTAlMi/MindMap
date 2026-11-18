@@ -3311,11 +3311,10 @@ function buildMenu() {
     `<div class="sec">Fichier</div>` + it('new', 'Nouvelle carte (nouvel onglet)…') + it('open', 'Ouvrir / importer…', 'Ctrl+O') + it('merge', 'Fusionner un fichier (ajouter ses feuilles)…') + it('save', 'Enregistrer', 'Ctrl+S') + it('saveas', 'Enregistrer sous…', 'Ctrl+Maj+S') + it('closetab', 'Fermer l’onglet') + it('drafts', 'Brouillons sur cet appareil…') +
     `<div class="sec">Édition</div>` + it('dup', 'Dupliquer', 'Ctrl+D') + it('single', 'Supprimer en gardant les enfants', 'Ctrl+Retour') + it('focusb', focusId ? 'Quitter la branche isolée' : 'Isoler la branche', 'Ctrl+;') + it('selall', 'Tout sélectionner', 'Ctrl+A') + it('center', 'Aller au sujet central', 'Origine') +
     `<div class="sec">Feuilles</div>` + it('sheetnew', 'Nouvelle feuille', 'Ctrl+Alt+N') + it('sheetdup', 'Dupliquer cette feuille') + it('sheetren', 'Renommer cette feuille') + it('sheetfrom', 'Nouvelle feuille à partir du sujet') + it('sheetdel', 'Supprimer cette feuille') +
-    `<div class="sec">Canopée (tableau de cartes)</div>` + it('tocano', 'Envoyer cette feuille vers Canopée…') + it('opencano', 'Ouvrir Canopée') +
     `<div class="sec">Exporter</div>` + it('png', 'Image PNG') + it('jpg', 'Image JPEG') + it('pdf', 'PDF (A4)') + it('svg', 'Image vectorielle SVG') + it('xmind', 'Fichier XMind (.xmind)') + it('md', 'Markdown') + it('opml', 'OPML') + it('copyimg', 'Copier l’image') + it('copytxt', 'Copier le plan (texte)') +
     `<div class="sec">Structure</div>` + Object.entries(STRUCTURES).map(([k, v]) => it('st:' + k, v, '', S === k)).join('') +
     `<div class="sec">Affichage</div>` + it('present', 'Présenter (diaporama)', 'F5') + it('style', 'Style de la carte…') + it('legend', 'Légende des marqueurs…') + it('outline', outlineOn ? 'Revenir à la carte' : 'Mode plan', 'Ctrl+E') + it('search', 'Rechercher', 'Ctrl+F') + it('zen', 'Mode concentration', 'Ctrl+.') + it('realignall', 'Réaligner toute la carte') + it('expand', 'Tout déplier') + it('collapse', 'Replier au niveau 1') + it('theme', uiTheme === 'dark' ? 'Interface claire' : 'Interface sombre') +
-    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.3</div>`;
+    `<hr>` + (deferredInstall ? it('install', 'Installer l’application') : '') + it('help', 'Raccourcis et aide') + `<div class="sec" style="text-align:right">Ramure v3.4</div>`;
 }
 function openMenu() { buildMenu(); menu.classList.add('open'); }
 function closeMenu() { menu.classList.remove('open'); }
@@ -3327,7 +3326,6 @@ menu.addEventListener('click', async e => {
   if (a.startsWith('st:')) return setStructure(a.slice(3));
   const err = er => toast('Export impossible : ' + er.message);
   ({
-    tocano: sendToCanopee, opencano: () => window.open('tableau/', '_blank'),
     new: showTemplates, open: () => openFile(false), merge: mergeFile, closetab: () => closeTab(activeTab), save: () => saveFile(false), saveas: () => saveFile(true), drafts: showDrafts,
     png: () => exportPNG().catch(err), jpg: () => exportJPEG().catch(err), present: startPresentation, legend: showLegendEditor, pdf: () => exportPDF().catch(err),
     svg: () => downloadBlob(new Blob([exportSVG().svg], { type: 'image/svg+xml' }), exportBase() + '.svg'),
@@ -3435,43 +3433,6 @@ window.addEventListener('pagehide', () => { clearTimeout(draftTimer); saveDraft(
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(draftTimer); saveDraft(); } });
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
 if ('serviceWorker' in navigator && !IN_FRAME && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-/* ---------- Passerelle avec Canopée (tableaux de cartes, même site) ---------- */
-function pxDB() { return new Promise((res, rej) => { const r = indexedDB.open('passerelle', 1); r.onupgradeneeded = () => r.result.createObjectStore('x'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-async function pxPut(key, val) { const d = await pxDB(); await new Promise((res, rej) => { const t = d.transaction('x', 'readwrite'); t.objectStore('x').put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); d.close(); }
-async function pxTake(key) {
-  const d = await pxDB();
-  const v = await new Promise((res, rej) => { const t = d.transaction('x', 'readwrite'); const s = t.objectStore('x'); const g = s.get(key); g.onsuccess = () => { if (g.result !== undefined) s.delete(key); }; t.oncomplete = () => res(g.result); t.onerror = () => rej(t.error); });
-  d.close(); return v;
-}
-function sendToCanopee() {
-  if (editing) commitEdit();
-  const one = { app: 'ramure', version: 3, id: 'd' + uid(), title: book.sheets.length > 1 ? doc.title : book.title, sheets: [deepCopy(doc)], active: 0 };
-  const n = (function cnt(x) { return (x.children || []).length; })(doc.root);
-  showModal('Envoyer vers Canopée', `<p>La feuille « <b>${esc(doc.title)}</b> » devient un tableau de cartes : un cadre, et une carte par branche principale (${n}). Les sous-sujets deviennent des listes dans les cartes, les liens entre branches des flèches.</p><div class="btns" style="margin-top:12px">${IN_FRAME ? '' : '<button class="btn primary" id="cOpen">Ouvrir dans Canopée</button>'}<button class="btn" id="cNo">Annuler</button></div>${IN_FRAME ? '<p class="small muted">Indisponible dans l’aperçu : utilise la version installée.</p>' : ''}`, b => {
-    b.querySelector('#cNo').onclick = closeModal;
-    const o = b.querySelector('#cOpen'); if (o) o.onclick = async () => {
-      closeModal();
-      try { await pxPut('canopee', { book: one, at: Date.now() }); const here = await wakePeer('canopee'); if (here) toast('Tableau ouvert dans la fenêtre Canopée déjà ouverte.', 3500); else { window.open('tableau/', '_blank'); toast('Feuille envoyée à Canopée.'); } }
-      catch (e) { toast('Passerelle indisponible : ' + (e.message || e)); }
-    };
-  });
-}
-function wakePeer(target) {
-  return new Promise(res => {
-    let bc; try { bc = new BroadcastChannel('passerelle'); } catch (e) { res(false); return; }
-    const t = setTimeout(() => { bc.close(); res(false); }, 450);
-    bc.onmessage = e => { if (e.data && e.data.ack === target) { clearTimeout(t); bc.close(); res(true); } };
-    bc.postMessage({ wake: target });
-  });
-}
-try { const bcIn = new BroadcastChannel('passerelle'); bcIn.onmessage = e => { if (e.data && e.data.wake === 'ramure' && !IN_FRAME) { bcIn.postMessage({ ack: 'ramure' }); checkInbox(); } }; } catch (e) {}
-async function checkInbox() {
-  if (IN_FRAME || !book) return;
-  let r; try { r = await pxTake('ramure'); } catch (e) { return; }
-  if (!r || !r.book || Date.now() - (r.at || 0) > 30 * 60000) return;
-  openInNewTab(r.book, { dirty: true }); toast('Carte reçue de Canopée.');
-}
-window.addEventListener('focus', () => checkInbox());
 async function init() {
   setUiTheme(uiTheme);
   buildTopicPanel(); buildStylePanel();
@@ -3489,9 +3450,8 @@ async function init() {
   renderFileTabs(); saveTabList();
   setTab(LS.get('ramure:tab') === 'style' ? 'style' : 'topic');
   cv.focus({ preventScroll: true });
-  checkInbox();
 }
-window.__ramure = { checkInbox, pxPut, pxTake, sendToCanopee, async _merge(f) { mergeMode = true; await openFromFile(f, null); }, async _open(f) { mergeMode = false; await openFromFile(f, null); }, get tabs() { return tabs.map((_, i) => liveTab(i).book.title); }, get activeTab() { return activeTab; }, switchTab, closeTab, get doc() { return doc; }, get book() { return book; }, switchSheet, addSheet, sheetFromTopic, setDoc, exportSVG, buildPdf, parseOutline, importXmind, toMarkdown, toOPML, toXmindContent, zipStore, readZip, get L() { return L; }, select, get sel() { return sel; }, addBoundary, addSummary, setStyle, applyTheme, toggleOutline, runSearch, get SUMS() { return SUMS; } };
+window.__ramure = { async _merge(f) { mergeMode = true; await openFromFile(f, null); }, async _open(f) { mergeMode = false; await openFromFile(f, null); }, get tabs() { return tabs.map((_, i) => liveTab(i).book.title); }, get activeTab() { return activeTab; }, switchTab, closeTab, get doc() { return doc; }, get book() { return book; }, switchSheet, addSheet, sheetFromTopic, setDoc, exportSVG, buildPdf, parseOutline, importXmind, toMarkdown, toOPML, toXmindContent, zipStore, readZip, get L() { return L; }, select, get sel() { return sel; }, addBoundary, addSummary, setStyle, applyTheme, toggleOutline, runSearch, get SUMS() { return SUMS; } };
 init();
 })();
 </script>

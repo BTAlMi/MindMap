@@ -7,7 +7,7 @@ Ramure est une application de cartes mentales et d'arbres des causes. Elle fonct
 1. Sur github.com, crée un nouveau dépôt nommé `ramure`, en visibilité **Public**.
    - Le compte gratuit l'exige pour GitHub Pages.
    - Seul le code est public : tes cartes ne sont jamais envoyées sur GitHub.
-2. Dans le dépôt vide, clique sur **uploading an existing file**. Glisse tout le contenu de ce dossier : `index.html`, `manifest.webmanifest`, `sw.js`, `README.md`, le dossier `icons` et le dossier `tableau` (Canopée). Valide avec **Commit changes**.
+2. Dans le dépôt vide, clique sur **uploading an existing file**. Glisse tout le contenu de ce dossier : `index.html`, `manifest.webmanifest`, `sw.js`, `README.md` et le dossier `icons`. Valide avec **Commit changes**.
 3. Va dans **Settings → Pages**. Dans « Build and deployment », choisis **Deploy from a branch**, puis la branche `main` et le dossier `/ (root)`, et clique sur **Save**.
 4. Une à deux minutes plus tard, l'appli répond à l'adresse `https://<ton-pseudo>.github.io/ramure/`.
 
@@ -26,7 +26,7 @@ Ramure est une application de cartes mentales et d'arbres des causes. Elle fonct
 
 ## Publier une mise à jour
 
-Remplace les fichiers dans le dépôt, puis augmente `VERSION` dans `sw.js` (par exemple `ramure-v3.0.1`), et `tableau/sw.js` pour Canopée. Les appareils récupèrent la nouvelle version dès le rechargement suivant (version visible en bas du Menu).
+Remplace les fichiers dans le dépôt, puis augmente `VERSION` dans `sw.js` (par exemple `ramure-v3.0.1`). Les appareils récupèrent la nouvelle version dès le rechargement suivant (version visible en bas du Menu).
 
 ## Personnaliser
 
@@ -79,19 +79,3 @@ Menu → **Fusionner un fichier (ajouter ses feuilles)…** ajoute toutes les fe
 - **Export :** PNG, JPEG, PDF A4, SVG, XMind (toutes les feuilles, avec les images), Markdown, OPML, et copie de l'image ou du plan dans le presse-papiers.
 - **Présentation :** F5 lance un diaporama : une vue d'ensemble, puis une diapo par branche principale.
 
-## Canopée (tableaux de cartes)
-
-Canopée est l'appli sœur de Ramure, dans le sous-dossier `tableau`. Elle sert à organiser un projet ou une veille sur un tableau libre.
-
-- **Adresse :** `https://<ton-pseudo>.github.io/ramure/tableau/`. Elle s'installe séparément, comme Ramure, avec sa propre icône.
-- **Cartes :** texte en Markdown (cases à cocher cliquables), image ou photo, lien SharePoint, OneDrive ou web, étiquettes, couleurs.
-- **Cadres :** ils regroupent des cartes. Déplacer un cadre déplace ses cartes.
-- **Flèches :** elles relient les cartes entre elles. On peut leur donner un libellé.
-- **Organisation :** barre latérale avec tes tableaux rangés en dossiers, recherche Ctrl+K dans tous les tableaux, minicarte.
-- **Fichiers :** chaque tableau est un fichier `.canopee` à enregistrer dans OneDrive (Ctrl+S). Un brouillon reste sur l'appareil.
-- **Exports :** PNG, PDF et Markdown.
-- **Passerelle avec Ramure :**
-  - Dans Canopée, « Envoyer vers Ramure » transforme un cadre, une sélection ou le tableau en carte mentale. Les flèches deviennent la hiérarchie.
-  - Dans Ramure, Menu → « Envoyer cette feuille vers Canopée » fait l'inverse : chaque branche principale devient une carte.
-  - Canopée ouvre aussi directement un fichier `.ramure`.
-- **Après la mise en ligne :** ouvre d'abord Ramure et recharge la page une fois. La nouvelle version de Ramure laisse ainsi la main à Canopée dans le dossier `tableau`.

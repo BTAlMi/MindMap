@@ -2,7 +2,7 @@
    Page principale : réseau d'abord (les mises à jour arrivent dès le premier rechargement),
    copie en cache si hors ligne. Autres fichiers : cache d'abord.
    Incrémenter VERSION à chaque mise à jour publiée. */
-const VERSION = 'ramure-v3.3.0';
+const VERSION = 'ramure-v3.4.0';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 
 self.addEventListener('install', e => {
@@ -18,7 +18,6 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.includes('/tableau/')) return; // Canopée a son propre service worker
   const isPage = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
   if (isPage) {
     e.respondWith(
