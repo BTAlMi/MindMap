@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Canopée</title>
+<meta name="theme-color" content="#1B1E21">
+<meta name="description" content="Canopée — tableaux de cartes libres : notes, images, liens, cadres et flèches. Compagnon de Ramure.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --accent:#2FA36B;--accent-2:#3DBE80;--danger:#E5484D;
+  --font:Inter,"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+:root,[data-theme=dark]{
+  --bg:#16181A;--canvas:#1B1E21;--dot:#30353A;--panel:#202326;--panel-2:#25292D;--line:#30353A;--line-2:#4A525A;
+  --text:#E7E9EB;--muted:#8F979E;--soft:#2A2F33;--card:#262A2F;--card-line:#3B4248;--shadow:0 8px 30px rgba(0,0,0,.45);
+  --accent-soft:rgba(47,163,107,.16);--sel:#3DBE80;--mix:22%;--edge:#7C858D;
+}
+[data-theme=light]{
+  --bg:#EEF0F1;--canvas:#F6F6F3;--dot:#DADCD6;--panel:#FFFFFF;--panel-2:#F4F5F6;--line:#E3E5E7;--line-2:#D3D7DA;
+  --text:#1D2125;--muted:#6B737A;--soft:#EEF0F2;--card:#FFFFFF;--card-line:#E1E4E7;--shadow:0 8px 30px rgba(20,30,40,.14);
+  --accent-soft:rgba(47,163,107,.12);--sel:#2FA36B;--mix:16%;--edge:#8E979F;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+svg{display:block}
+.hidden{display:none!important}
+#app{position:fixed;inset:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr)}
+/* Barre latérale */
+#side{grid-column:1;width:260px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;transition:margin .18s}
+#app.noside #side{margin-left:-261px}
+.sbh{display:flex;align-items:center;gap:8px;padding:12px 12px 8px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;flex:1;min-width:0}
+.logo svg{width:24px;height:24px;flex:none}
+.ib{border:0;background:transparent;border-radius:8px;height:30px;min-width:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);padding:0 6px}
+.ib:hover{background:var(--soft);color:var(--text)}
+.ib:disabled{opacity:.35;pointer-events:none}
+.ib svg{width:17px;height:17px}
+.sfind{margin:4px 12px 8px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:7px 10px;color:var(--muted);text-align:left}
+.sfind:hover{border-color:var(--line-2)}
+.sfind span{flex:1}
+kbd{font-family:var(--font);font-size:11px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;padding:0 5px;color:var(--muted);background:var(--panel)}
+.snew{margin:0 12px 6px;display:flex;align-items:center;gap:8px;border:0;background:var(--accent);color:#fff;border-radius:9px;padding:8px 10px;font-weight:600;justify-content:center}
+.snew:hover{background:var(--accent-2)}
+#lib{flex:1;overflow:auto;padding:4px 8px 12px;min-height:0}
+.fold{margin-top:10px}
+.fh{display:flex;align-items:center;gap:4px;padding:4px 6px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);border-radius:6px;user-select:none}
+.fh .fn{flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh .chev{width:14px;transition:transform .15s;cursor:pointer}
+.fold.closed .chev{transform:rotate(-90deg)}
+.fold.closed .bl{display:none}
+.fh .ib{height:22px;min-width:22px;opacity:0}
+.fh:hover .ib{opacity:1}
+.bi{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--text);user-select:none}
+.bi:hover{background:var(--soft)}
+.bi.on{background:var(--accent-soft)}
+.bi.on .bt{color:var(--accent-2);font-weight:600}
+[data-theme=light] .bi.on .bt{color:#1F7A4E}
+.bi .dot{width:9px;height:9px;border-radius:3px;flex:none;background:var(--muted)}
+.bi .bt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bi .bc{font-size:11px;color:var(--muted)}
+.bi .ib{height:22px;min-width:22px;opacity:0;margin-right:-4px}
+.bi:hover .ib,.bi.on .ib{opacity:1}
+.bi.dragover{outline:2px dashed var(--accent)}
+.fold.dragover .fh{background:var(--accent-soft)}
+.sbf{border-top:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.sbf a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:7px}
+.sbf a:hover{background:var(--soft);color:var(--text)}
+.sbf .ver{margin-left:auto}
+/* Zone principale */
+#main{grid-column:2;position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
+#top{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel);min-width:0}
+#btitle{border:1px solid transparent;background:transparent;border-radius:8px;padding:5px 8px;font-weight:650;font-size:15px;min-width:60px;width:auto;max-width:340px;flex:0 1 auto}
+#btitle:hover{border-color:var(--line)}
+#btitle:focus{outline:none;border-color:var(--accent);background:var(--panel-2)}
+#bmeta{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#bmeta .st::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#F5A524;margin:0 6px 1px 4px}
+#bmeta .st.ok::before{background:var(--accent)}
+#top .sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--line-2);background:var(--panel-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{background:var(--accent-2)}
+.btn.dng{color:var(--danger)}
+.btn svg{width:16px;height:16px}
+#stage{position:relative;flex:1;overflow:hidden;background-color:var(--canvas);touch-action:none;outline:none;cursor:default}
+#stage.hand,#stage.panning{cursor:grab}
+#stage.panning{cursor:grabbing}
+#stage.tool-card,#stage.tool-section,#stage.tool-connect{cursor:crosshair}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+#edges path.hit{pointer-events:stroke;stroke:transparent;stroke-width:14;fill:none;cursor:pointer}
+#edges path.ln{fill:none;stroke-width:1.6;pointer-events:none}
+#edges .sel path.ln{stroke-width:2.6}
+#edges .lbl{pointer-events:all;cursor:pointer}
+#edges text{font-family:var(--font);font-size:12px}
+/* Cadres */
+.sec{position:absolute;border:calc(1.5px * max(1, var(--iz,1))) dashed var(--line-2);border-radius:14px;background:color-mix(in srgb,var(--c,transparent) 7%,transparent)}
+.sec[style*="--c"]{border-color:color-mix(in srgb,var(--c) 55%,transparent)}
+.sec .sh{position:absolute;left:10px;top:-13px;max-width:calc(100% - 20px);display:flex;align-items:center;gap:6px;background:var(--canvas);padding:2px 8px;border-radius:7px;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);cursor:move;white-space:nowrap;overflow:hidden}
+.sec[style*="--c"] .sh{color:color-mix(in srgb,var(--c) 75%,var(--text))}
+.sec .sh .n{font-weight:500;opacity:.7;text-transform:none;letter-spacing:0}
+.sec.sel{border-style:solid;border-color:var(--sel)}
+.sec.sel .sh{color:var(--sel)}
+.rz{position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;cursor:nwse-resize;display:none;z-index:3}
+.rz::after{content:"";position:absolute;right:5px;bottom:5px;width:8px;height:8px;border-right:2px solid var(--sel);border-bottom:2px solid var(--sel);border-radius:0 0 3px 0}
+.sec.sel>.rz,.card.sel>.rz{display:block}
+.card .rz{cursor:ew-resize}
+/* Cartes */
+.card{position:absolute;background:var(--card);border:1px solid var(--card-line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:visible}
+.card[style*="--c"]{background:color-mix(in srgb,var(--c) var(--mix),var(--card));border-color:color-mix(in srgb,var(--c) 40%,var(--card-line))}
+.card:hover{border-color:var(--line-2)}
+.card.sel{border-color:var(--sel);box-shadow:0 0 0 1.5px var(--sel),0 6px 18px rgba(0,0,0,.25)}
+.card.drop{box-shadow:0 0 0 2px var(--accent)}
+.card .im{border-radius:11px 11px 0 0;overflow:hidden;background:var(--soft)}
+.card .im img{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.card .cb{padding:10px 12px 10px;min-width:0}
+.card .ct{font-weight:650;font-size:14px;line-height:1.3;overflow-wrap:anywhere;margin-bottom:4px}
+.card .ct:empty::before{content:"Sans titre";color:var(--muted);font-weight:500}
+.card .md{font-size:12.5px;line-height:1.5;color:color-mix(in srgb,var(--text) 82%,var(--muted));overflow-wrap:anywhere;max-height:340px;overflow:hidden;position:relative}
+.card .md.clip::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(transparent,var(--card))}
+.card[style*="--c"] .md.clip::after{background:linear-gradient(transparent,color-mix(in srgb,var(--c) var(--mix),var(--card)))}
+.md p{margin:0 0 6px}
+.md h1,.md h2,.md h3{margin:6px 0 4px;font-size:13.5px;line-height:1.3}
+.md h1{font-size:15px}
+.md ul,.md ol{margin:0 0 6px;padding-left:18px}
+.md li{margin:1px 0}
+.md li.tk{list-style:none;margin-left:-18px;display:flex;gap:6px;align-items:flex-start}
+.md li.tk input{margin:3px 0 0;accent-color:var(--accent);cursor:pointer;flex:none}
+.md li.tk.done>span{text-decoration:line-through;opacity:.6}
+.md code{font-family:var(--mono);font-size:11.5px;background:var(--soft);border-radius:4px;padding:1px 4px}
+.md pre{background:var(--soft);border-radius:8px;padding:8px;overflow:auto;margin:0 0 6px}
+.md pre code{background:none;padding:0}
+.md blockquote{margin:0 0 6px;padding-left:9px;border-left:3px solid var(--line-2);color:var(--muted)}
+.md hr{border:0;border-top:1px solid var(--line-2);margin:8px 0}
+.md a{color:var(--accent-2)}
+[data-theme=light] .md a{color:#1F7A4E}
+.md table{border-collapse:collapse;font-size:12px;margin:0 0 6px}
+.md td,.md th{border:1px solid var(--line-2);padding:2px 6px}
+.card .lk{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--panel-2);overflow:hidden}
+.card .lk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .lk svg{width:14px;height:14px;flex:none}
+.card .tg{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.tag{font-size:11px;border-radius:6px;padding:1px 7px;background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.card .pg{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted)}
+.card .pg i{flex:1;height:4px;border-radius:3px;background:var(--soft);overflow:hidden}
+.card .pg i b{display:block;height:100%;background:var(--accent)}
+.port{position:absolute;top:50%;right:-9px;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--panel);border:2px solid var(--sel);display:none;cursor:crosshair;z-index:3}
+.card:hover>.port,.card.sel>.port,.sec.sel>.port{display:block}
+.sec>.port{top:-8px;right:24px;margin-top:0}
+#stage.tool-connect .card>.port{display:block}
+.card.hit{box-shadow:0 0 0 2px var(--accent)}
+#marquee{position:absolute;border:1px solid var(--sel);background:color-mix(in srgb,var(--sel) 12%,transparent);border-radius:4px;pointer-events:none;display:none;z-index:5}
+#empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);text-align:center;line-height:1.8;padding:20px}
+#empty.show{display:flex}
+#empty b{color:var(--text)}
+/* Barre d'outils */
+#tools.left{left:14px;transform:none}
+#tools{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);z-index:20}
+#tools .ib{height:34px;min-width:34px}
+#tools .ib.on{background:var(--accent-soft);color:var(--accent-2)}
+[data-theme=light] #tools .ib.on{color:#1F7A4E}
+#tools .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+#zl{min-width:48px;text-align:center;font-size:12px;color:var(--muted);border:0;background:transparent;border-radius:7px;height:30px}
+#zl:hover{background:var(--soft)}
+#mini{position:absolute;right:14px;bottom:14px;width:190px;height:124px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:19;overflow:hidden;cursor:pointer;touch-action:none}
+#mini canvas{width:100%;height:100%;display:block}
+/* Panneau de détail */
+#det{grid-column:3;width:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;transition:width .18s}
+#det.open{width:390px}
+#detIn{width:390px;display:flex;flex-direction:column;height:100%;min-height:0}
+.dh{display:flex;align-items:center;gap:8px;padding:12px 14px 4px;font-size:12px;color:var(--muted)}
+.dh .sp{flex:1}
+.dh .ty{display:inline-flex;align-items:center;gap:5px}
+.dh .ty::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+#detBody{flex:1;overflow:auto;padding:4px 14px 14px;min-height:0;display:flex;flex-direction:column}
+.dt{width:100%;border:0;background:transparent;font-size:21px;font-weight:700;padding:6px 0;outline:none}
+.dtabs{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);margin:4px 0 10px}
+.dtabs button{border:0;background:transparent;padding:6px 0 8px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px}
+.dtabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.dtabs .cnt{margin-left:auto;font-size:12px;color:var(--muted)}
+#dBody{width:100%;min-height:220px;flex:1;resize:none;border:0;background:transparent;outline:none;font-family:var(--mono);font-size:13px;line-height:1.6}
+#dPrev{min-height:220px;flex:1;font-size:14px;color:var(--text);max-height:none}
+.fl{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin:16px 0 6px;display:flex;align-items:center;gap:6px}
+.inp{width:100%;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:7px 10px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sw{display:flex;gap:7px;flex-wrap:wrap}
+.sw button{width:22px;height:22px;border-radius:50%;border:2px solid transparent;padding:0;background:var(--c,var(--soft));box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.sw button.none{background:var(--card);box-shadow:inset 0 0 0 1px var(--line-2);position:relative}
+.sw button.none::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:1.5px;background:var(--muted);transform:rotate(-45deg)}
+.sw button.on{border-color:var(--text)}
+.lst{list-style:none;margin:0;padding:0}
+.lst li{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+.lst li button.go{border:0;background:transparent;padding:0;text-align:left;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.lst li button.go:hover{color:var(--accent-2)}
+.lst .ar{color:var(--muted);flex:none;width:16px}
+.df{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line)}
+.df .btn{padding:6px 10px;font-size:13px}
+.note{font-size:12.5px;color:var(--muted);line-height:1.5}
+.dimg{border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.dimg img{display:block;width:100%}
+/* Menus, modales, palette */
+.menu{position:fixed;z-index:80;min-width:230px;max-width:calc(100vw - 16px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:5px;display:none;max-height:calc(100dvh - 20px);overflow:auto}
+.menu.open{display:block}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:8px 10px;border-radius:8px}
+.menu button:hover,.menu button:focus-visible{background:var(--soft);outline:none}
+.menu button .k{margin-left:auto;font-size:11px;color:var(--muted)}
+.menu button.dng{color:var(--danger)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px}
+.menu .mh{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);padding:6px 10px 2px}
+#modal{position:fixed;inset:0;background:rgba(5,8,10,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+#modal.open{display:flex}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);width:min(720px,100%);max-height:calc(100dvh - 32px);overflow:auto;padding:18px 20px 20px}
+.mbox .mh2{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mbox h2{font-size:18px;margin:0}
+.mbox p{line-height:1.55}
+.tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.tpl{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;background:var(--panel-2);display:flex;flex-direction:column;gap:6px;min-height:92px}
+.tpl:hover{border-color:var(--accent);background:var(--accent-soft)}
+.tpl b{font-size:14px}
+.tpl span{font-size:12.5px;color:var(--muted);line-height:1.4}
+table.keys{border-collapse:collapse;width:100%;font-size:13px}
+table.keys td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.keys td:first-child{white-space:nowrap;font-weight:600;width:1%}
+#pal{position:fixed;inset:0;z-index:110;display:none;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(5,8,10,.5)}
+#pal.open{display:flex}
+.pbox{width:min(640px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:70vh}
+.pin{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.pin input{flex:1;border:0;background:transparent;outline:none;font-size:16px}
+.pin svg{width:18px;height:18px;color:var(--muted)}
+#palList{overflow:auto;padding:6px}
+.pg2{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);padding:8px 10px 4px;display:flex;justify-content:space-between}
+.pi{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer}
+.pi.on{background:var(--accent-soft)}
+.pi .pt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi .ps{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}
+.pi mark{background:transparent;color:var(--accent-2);font-weight:700}
+.pfoot{display:flex;gap:14px;padding:8px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px;z-index:120;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100vw - 32px);text-align:center}
+#toast.show{opacity:1}
+#banner{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:119;background:#7A4A00;color:#FFF;padding:8px 14px;border-radius:10px;font-size:12.5px;display:none;max-width:calc(100vw - 32px);text-align:center}
+#scrim{position:fixed;inset:0;background:rgba(5,8,10,.45);z-index:39;display:none}
+input[type=file]{display:none}
+@media (max-width:820px){
+  #app{grid-template-columns:minmax(0,1fr)}
+  #main{grid-column:1}
+  #side{position:fixed;left:0;top:0;bottom:0;z-index:40;width:min(300px,86vw);box-shadow:var(--shadow);transition:transform .2s;margin:0!important}
+  #app.noside #side{transform:translateX(-102%)}
+  #app:not(.noside) #scrim{display:block}
+  #det{position:fixed;left:0;right:0;bottom:0;width:auto!important;height:0;z-index:45;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:var(--shadow);transition:height .2s}
+  #det.open{height:72dvh}
+  #detIn{width:100%}
+  #btitle{max-width:none;flex:1 1 0;width:0}
+  #bmeta,.hide-sm{display:none!important}
+  #tools{left:8px;right:8px;transform:none;bottom:max(10px,env(safe-area-inset-bottom));overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+  #tools .ib{flex:none}
+  #mini{display:none!important}
+  #top{padding:6px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div class="sbh">
+      <div class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#173B2B"/><rect x="29" y="34" width="6" height="18" rx="3" fill="#B7F0CF"/><circle cx="22" cy="30" r="11" fill="#2FA36B"/><circle cx="42" cy="30" r="11" fill="#2FA36B"/><circle cx="32" cy="21" r="13" fill="#3DBE80"/></svg><span>Canopée</span></div>
+      <button class="ib" id="sideClose" title="Masquer la barre latérale (Ctrl+\)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+    </div>
+    <button class="sfind" id="sFind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>Rechercher…</span><kbd>Ctrl K</kbd></button>
+    <button class="snew" id="sNew"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouveau tableau</button>
+    <div id="lib"></div>
+    <div class="sbf">
+      <a href="../" id="toRamure" title="Ouvrir Ramure (cartes mentales)"><svg width="16" height="16" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F766E"/><g stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"><path d="M24 32 H32 M32 32 C38 32 38 18 44 18 M32 32 H44 M32 32 C38 32 38 46 44 46"/></g><circle cx="20" cy="32" r="7" fill="#fff"/></svg>Ramure</a>
+      <button class="ib" id="addFolder" title="Nouveau dossier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg></button>
+      <button class="ib" id="themeBtn" title="Thème clair / sombre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      <span class="ver">v1.0</span>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+  <section id="main">
+    <header id="top">
+      <button class="ib" id="sideOpen" title="Barre latérale (Ctrl+\)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+      <input id="btitle" spellcheck="false" aria-label="Titre du tableau">
+      <span id="bmeta"></span>
+      <span class="sp"></span>
+      <button class="ib" id="undoBtn" title="Annuler (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+      <button class="ib hide-sm" id="redoBtn" title="Rétablir (Ctrl+Y)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+      <button class="ib hide-sm" id="findBtn" title="Rechercher (Ctrl+K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+      <button class="ib" id="saveBtn" title="Enregistrer dans un fichier (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8M7 21v-7h10v7"/></svg></button>
+      <button class="btn pri" id="newCardBtn" title="Nouvelle carte (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Carte</span></button>
+      <button class="ib" id="menuBtn" title="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <button class="ib" id="detBtn" title="Panneau de détail (Ctrl+I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg></button>
+    </header>
+    <div id="stage" tabindex="0">
+      <div id="world"><svg id="edges"></svg><div id="secs"></div><div id="cards"></div></div>
+      <div id="marquee"></div>
+      <div id="empty"><div><b>Tableau vide</b><br>Double-clic (ou double tape) pour créer une carte · <kbd>N</kbd> nouvelle carte · <kbd>S</kbd> nouveau cadre<br>Colle un texte, un lien ou une image (Ctrl+V), ou glisse des photos ici.</div></div>
+      <div id="tools">
+        <button class="ib on" data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3l14 8-6 2-3 6z"/></svg></button>
+        <button class="ib" data-tool="hand" title="Main : déplacer la vue (H, ou Espace maintenu)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg></button>
+        <span class="sep"></span>
+        <button class="ib" data-tool="card" title="Carte (N) : clique pour la placer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h5"/></svg></button>
+        <button class="ib" data-act="image" title="Image ou photo (I)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg></button>
+        <button class="ib" data-act="link" title="Lien web ou document (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></button>
+        <button class="ib" data-tool="section" title="Cadre (S) : glisse pour le dessiner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 3"><rect x="3" y="4" width="18" height="16" rx="3"/></svg></button>
+        <button class="ib" data-tool="connect" title="Relier (C) : glisse d’une carte à une autre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 17c6-1 4-9 10-10"/></svg></button>
+        <span class="sep"></span>
+        <button class="ib" data-act="zout" title="Zoom arrière (-)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/></svg></button>
+        <button id="zl" data-act="z100" title="Zoom à 100 % (0)">100 %</button>
+        <button class="ib" data-act="zin" title="Zoom avant (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/></svg></button>
+        <button class="ib" data-act="fit" title="Tout afficher (Maj+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="ib hide-sm" data-act="mini" title="Minicarte (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="6" height="5" rx="1"/></svg></button>
+      </div>
+      <div id="mini"><canvas id="miniC"></canvas></div>
+    </div>
+  </section>
+  <aside id="det"><div id="detIn">
+    <div class="dh"><span class="ty" id="dType"></span><span id="dDate"></span><span class="sp"></span><span id="dSaved"></span><button class="ib" id="detClose" title="Fermer (Échap)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div id="detBody"></div>
+    <div class="df" id="detFoot"></div>
+  </div></aside>
+</div>
+<div class="menu" id="menu"></div>
+<div class="menu" id="ctx"></div>
+<div id="modal"><div class="mbox"><div class="mh2"><h2 id="mTitle"></h2><button class="ib" id="mClose" title="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="mBody"></div></div></div>
+<div id="pal"><div class="pbox"><div class="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="palIn" placeholder="Rechercher un tableau, une carte, une commande…" spellcheck="false" autocomplete="off"><kbd>Échap</kbd></div><div id="palList"></div><div class="pfoot"><span>↑↓ naviguer</span><span>Entrée ouvrir</span><span id="palStat"></span></div></div></div>
+<div id="toast"></div>
+<div id="banner"></div>
+<input type="file" id="fileIn" accept=".canopee,.ramure,.json,application/json">
+<input type="file" id="imgIn" accept="image/*" multiple>
+<script>
+(() => {
+'use strict';
+/* ============================================================
+   Canopée — tableaux de cartes libres. Compagnon de Ramure.
+   Données : brouillons dans cet appareil (IndexedDB), fichiers .canopee (OneDrive).
+   Rien n'est envoyé sur internet.
+   ============================================================ */
+const VERSION = '1.0';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = (p = '') => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const deepCopy = o => JSON.parse(JSON.stringify(o));
+const oneLine = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const HREF_RE = /^(https?:\/\/|mailto:)/i;
+const IMG_RE = /^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/;
+const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const LS = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const LSJ = (k, d) => { try { const v = JSON.parse(LS.get(k) || 'null'); return v ?? d; } catch (e) { return d; } };
+let toastT;
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+const plural = (n, w) => n + ' ' + w + (n > 1 ? 's' : '');
+const fmtDate = t => { try { return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; } };
+const safeName = s => (oneLine(s).replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80) || 'tableau');
+const IS_TOUCH = () => matchMedia('(pointer:coarse)').matches;
+const SMALL = () => matchMedia('(max-width:820px)').matches;
+
+/* ---------- Couleurs ---------- */
+const COLORS = {
+  red: { n: 'Rouge', h: '#E5484D' }, orange: { n: 'Orange', h: '#F76B15' }, yellow: { n: 'Jaune', h: '#F5B83D' }, green: { n: 'Vert', h: '#30A46C' },
+  teal: { n: 'Turquoise', h: '#12A594' }, blue: { n: 'Bleu', h: '#0090FF' }, violet: { n: 'Violet', h: '#8E4EC6' }, pink: { n: 'Rose', h: '#D6409F' }, gray: { n: 'Gris', h: '#8B8D98' }
+};
+const colVar = c => COLORS[c] ? `--c:${COLORS[c].h};` : '';
+function hexRgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mixHex(a, b, p) { const A = hexRgb(a), B = hexRgb(b); return '#' + A.map((v, i) => Math.round(v * p + B[i] * (1 - p)).toString(16).padStart(2, '0')).join(''); }
+function nearestColor(hex) {
+  if (typeof hex !== 'string' || !/^#[0-9a-f]{3,6}$/i.test(hex)) return '';
+  const A = hexRgb(hex); let best = '', bd = 1e9;
+  for (const [k, v] of Object.entries(COLORS)) { const B = hexRgb(v.h); const d = (A[0] - B[0]) ** 2 + (A[1] - B[1]) ** 2 + (A[2] - B[2]) ** 2; if (d < bd) { bd = d; best = k; } }
+  return best;
+}
+const swatches = (cur, attr = 'data-col') => `<div class="sw"><button class="none${!cur ? ' on' : ''}" ${attr}="" title="Aucune"></button>` + Object.entries(COLORS).map(([k, v]) => `<button class="${cur === k ? 'on' : ''}" ${attr}="${k}" style="--c:${v.h}" title="${v.n}"></button>`).join('') + '</div>';
+
+/* ---------- Thème ---------- */
+let themePref = LS.get('canopee:theme') || '';
+function applyTheme() {
+  const dark = themePref ? themePref === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches;
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelector('meta[name=theme-color]').content = dark ? '#1B1E21' : '#F6F6F3';
+  renderMini();
+}
+function toggleTheme() { themePref = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; LS.set('canopee:theme', themePref); applyTheme(); }
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (!themePref) applyTheme(); });
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- Stockage local (IndexedDB) ---------- */
+let dbP = null;
+function db() {
+  if (!dbP) dbP = new Promise((res, rej) => {
+    const r = indexedDB.open('canopee', 1);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('b')) d.createObjectStore('b'); if (!d.objectStoreNames.contains('h')) d.createObjectStore('h'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  return dbP;
+}
+async function idb(store, mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => { const t = d.transaction(store, mode); const s = t.objectStore(store); const r = fn(s); t.oncomplete = () => res(r && 'result' in r ? r.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
+}
+const idbGet = (s, k) => idb(s, 'readonly', st => st.get(k)).catch(() => undefined);
+const idbPut = (s, k, v) => idb(s, 'readwrite', st => st.put(v, k));
+const idbDel = (s, k) => idb(s, 'readwrite', st => st.delete(k)).catch(() => {});
+const idbAll = s => idb(s, 'readonly', st => st.getAll()).catch(() => []);
+
+/* Passerelle Ramure ⇄ Canopée (même origine) */
+function pxDB() { return new Promise((res, rej) => { const r = indexedDB.open('passerelle', 1); r.onupgradeneeded = () => r.result.createObjectStore('x'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function pxPut(key, val) { const d = await pxDB(); await new Promise((res, rej) => { const t = d.transaction('x', 'readwrite'); t.objectStore('x').put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); d.close(); }
+async function pxTake(key) {
+  const d = await pxDB();
+  const v = await new Promise((res, rej) => { const t = d.transaction('x', 'readwrite'); const s = t.objectStore('x'); const g = s.get(key); g.onsuccess = () => { if (g.result !== undefined) s.delete(key); }; t.oncomplete = () => res(g.result); t.onerror = () => rej(t.error); });
+  d.close(); return v;
+}
+
+/* ---------- Modèle ---------- */
+function normalizeBoard(d) {
+  d = d && typeof d === 'object' ? d : {};
+  const seen = new Set(); const okId = (id, p) => { let v = (typeof id === 'string' && ID_RE.test(id) && !seen.has(id)) ? id : uid(p); seen.add(v); return v; };
+  const num = (v, def, a, b) => (typeof v === 'number' && isFinite(v)) ? clamp(v, a, b) : def;
+  const assets = {};
+  if (d.assets && typeof d.assets === 'object') for (const [k, v] of Object.entries(d.assets)) if (ID_RE.test(k) && typeof v === 'string' && IMG_RE.test(v)) assets[k] = v;
+  const cards = (Array.isArray(d.cards) ? d.cards : []).filter(c => c && typeof c === 'object').slice(0, 5000).map(c => {
+    const o = { id: okId(c.id, 'c'), type: ['text', 'image', 'link'].includes(c.type) ? c.type : 'text', x: num(c.x, 0, -1e6, 1e6), y: num(c.y, 0, -1e6, 1e6), w: num(c.w, 260, 140, 900), title: String(c.title ?? '').slice(0, 300), body: String(c.body ?? '').slice(0, 100000), tags: Array.isArray(c.tags) ? c.tags.map(t => oneLine(t).slice(0, 40)).filter(Boolean).slice(0, 20) : [], color: COLORS[c.color] ? c.color : '', created: c.created || Date.now(), updated: c.updated || Date.now() };
+    if (typeof c.href === 'string' && HREF_RE.test(c.href.trim())) o.href = c.href.trim().slice(0, 2000);
+    if (typeof c.asset === 'string' && assets[c.asset]) { o.asset = c.asset; o.ratio = num(c.ratio, 0.75, 0.05, 20); }
+    if (o.type === 'image' && !o.asset) o.type = 'text';
+    if (o.type === 'link' && !o.href) o.type = 'text';
+    return o;
+  });
+  const sections = (Array.isArray(d.sections) ? d.sections : []).filter(s => s && typeof s === 'object').slice(0, 1000).map(s => ({ id: okId(s.id, 's'), x: num(s.x, 0, -1e6, 1e6), y: num(s.y, 0, -1e6, 1e6), w: num(s.w, 400, 120, 20000), h: num(s.h, 300, 80, 20000), title: String(s.title ?? 'Cadre').slice(0, 120), color: COLORS[s.color] ? s.color : '' }));
+  const ids = new Set([...cards.map(c => c.id), ...sections.map(s => s.id)]);
+  const edges = (Array.isArray(d.edges) ? d.edges : []).filter(e => e && ids.has(e.from) && ids.has(e.to) && e.from !== e.to).slice(0, 5000).map(e => ({ id: okId(e.id, 'e'), from: e.from, to: e.to, label: oneLine(e.label).slice(0, 120), color: COLORS[e.color] ? e.color : '', arrow: ['end', 'both', 'none'].includes(e.arrow) ? e.arrow : 'end' }));
+  const v = d.view && typeof d.view === 'object' && isFinite(d.view.x) && isFinite(d.view.y) && isFinite(d.view.k) ? { x: +d.view.x, y: +d.view.y, k: clamp(+d.view.k, 0.1, 3) } : null;
+  return { app: 'canopee', version: 1, id: (typeof d.id === 'string' && ID_RE.test(d.id)) ? d.id : uid('b'), title: String(d.title || 'Sans titre').slice(0, 160), color: COLORS[d.color] ? d.color : '', created: d.created || Date.now(), updated: d.updated || Date.now(), cards, sections, edges, assets, view: v };
+}
+
+/* ---------- Modèles de tableau ---------- */
+const TEMPLATES = {
+  blank: { name: 'Tableau vide', desc: 'Une page blanche infinie.', build: () => ({ title: 'Nouveau tableau' }) },
+  veille: { name: 'Veille', desc: 'À lire → en cours → à retenir. Pour la réglementation, les normes, les retours d’expérience.', build: () => cols('Veille', ['À lire', 'En cours de lecture', 'À retenir'], { 0: [{ title: 'Exemple : article, norme ou guide', body: 'Colle ici un lien SharePoint ou web, puis tes notes.\n\n- [ ] Lire\n- [ ] Résumer en 3 points', tags: ['exemple'] }] }) },
+  projet: { name: 'Projet', desc: 'Contexte, idées, questions ouvertes, décisions, actions.', build: () => cols('Projet', ['Contexte', 'Idées', 'Questions ouvertes', 'Décisions', 'Actions'], { 4: [{ title: 'Prochaines actions', body: '- [ ] Première étape (moins de 30 min)\n- [ ] Étape suivante', color: 'green' }] }) },
+  kanban: { name: 'Kanban', desc: 'À faire, en cours, fait. Déplace les cartes d’une colonne à l’autre.', build: () => cols('Suivi', ['À faire', 'En cours', 'Fait'], { 0: [{ title: 'Tâche 1', body: '' }, { title: 'Tâche 2', body: '' }] }) },
+  visite: { name: 'Préparation de visite', desc: 'Objectifs, points à vérifier, photos, constats, suites à donner.', build: () => cols('Visite de site', ['Objectifs', 'Points à vérifier', 'Photos et constats', 'Suites à donner'], { 1: [{ title: 'Check-list', body: '- [ ] Point 1\n- [ ] Point 2\n- [ ] Point 3' }] }) }
+};
+function cols(title, names, seed) {
+  const W = 300, G = 40, sections = [], cards = [];
+  names.forEach((n, i) => {
+    const s = { id: uid('s'), x: i * (W + G), y: 0, w: W, h: 560, title: n, color: '' };
+    sections.push(s);
+    let y = 36; (seed[i] || []).forEach(c => { cards.push({ id: uid('c'), type: 'text', x: s.x + 20, y, w: W - 40, title: c.title, body: c.body || '', tags: c.tags || [], color: c.color || '' }); y += c.body ? 190 : 66; });
+  });
+  return { title, sections, cards };
+}
+
+/* ---------- État ---------- */
+let board = null;                 // tableau ouvert
+let lib = LSJ('canopee:lib', []); // index de la bibliothèque
+let folders = LSJ('canopee:folders', []);
+let closedFolders = new Set(LSJ('canopee:closed', []));
+let sel = new Set();
+let view = { x: 0, y: 0, k: 1 };
+let undo = [], redo = [], lastHK = null, lastHT = 0;
+let fileHandle = null;
+let tool = 'select';
+let spaceDown = false;
+let lastPointerWorld = null;
+let editMode = LS.get('canopee:edit') === 'p' ? 'p' : 'w';
+let showMini = LS.get('canopee:mini') !== '0';
+let deferredInstall = null;
+const H = new Map();              // hauteurs mesurées des cartes
+const stage = $('#stage'), world = $('#world'), cardsEl = $('#cards'), secsEl = $('#secs'), edgesEl = $('#edges');
+const det = $('#det');
+
+const libEntry = id => lib.find(b => b.id === id);
+function saveLib() { LS.set('canopee:lib', JSON.stringify(lib)); LS.set('canopee:folders', JSON.stringify(folders)); LS.set('canopee:closed', JSON.stringify([...closedFolders])); }
+const cardById = id => board.cards.find(c => c.id === id);
+const secById = id => board.sections.find(s => s.id === id);
+const edgeById = id => board.edges.find(e => e.id === id);
+const kindOf = id => id[0] === 'c' ? 'card' : id[0] === 's' ? 'sec' : id[0] === 'e' ? 'edge' : '';
+const itemById = id => kindOf(id) === 'card' ? cardById(id) : kindOf(id) === 'sec' ? secById(id) : kindOf(id) === 'edge' ? edgeById(id) : null;
+function rectOf(id) {
+  const c = cardById(id); if (c) return { x: c.x, y: c.y, w: c.w, h: H.get(c.id) || estimateH(c) };
+  const s = secById(id); if (s) return { x: s.x, y: s.y, w: s.w, h: s.h };
+  return null;
+}
+function estimateH(c) { let h = 44 + Math.min(340, Math.ceil(String(c.body || '').length / Math.max(20, c.w / 7.2)) * 19 + (c.body ? (c.body.match(/\n/g) || []).length * 10 : 0)); if (c.asset) h += c.w * (c.ratio || 0.75); if (c.tags.length) h += 26; if (c.href) h += 34; return h; }
+const center = r => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+const inside = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+const intersects = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const contains = (o, i) => i.x >= o.x && i.y >= o.y && i.x + i.w <= o.x + o.w && i.y + i.h <= o.y + o.h;
+function cardsIn(s) { return board.cards.filter(c => inside(center(rectOf(c.id)), s)); }
+function sectionsIn(s) { return board.sections.filter(o => o.id !== s.id && contains(s, o)); }
+function sectionOf(c) { const p = center(rectOf(c.id)); let best = null; for (const s of board.sections) if (inside(p, s) && (!best || s.w * s.h < best.w * best.h)) best = s; return best; }
+function bounds(ids) {
+  const rs = (ids || [...board.cards.map(c => c.id), ...board.sections.map(s => s.id)]).map(rectOf).filter(Boolean);
+  if (!rs.length) return null;
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const r of rs) { x1 = Math.min(x1, r.x); y1 = Math.min(y1, r.y); x2 = Math.max(x2, r.x + r.w); y2 = Math.max(y2, r.y + r.h); }
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
+/* ---------- Markdown (sûr) ---------- */
+function inlineMd(s) {
+  s = esc(s);
+  const codes = [];
+  s = s.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
+  s = s.replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)/g, (_, t, u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  s = s.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]+)/g, (_, p, u) => `${p}<a href="${u}" target="_blank" rel="noopener noreferrer">${u.length > 48 ? u.slice(0, 45) + '…' : u}</a>`);
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>').replace(/(^|[\s(])_([^_\s][^_]*)_/g, '$1<em>$2</em>');
+  s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+  s = s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[+i]}</code>`);
+  return s;
+}
+function md(src) {
+  const lines = String(src || '').replace(/\r/g, '').split('\n');
+  let out = '', i = 0, para = [];
+  const flush = () => { if (para.length) { out += '<p>' + para.map(inlineMd).join('<br>') + '</p>'; para = []; } };
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^```/.test(l)) { flush(); const buf = []; i++; while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]); i++; out += `<pre><code>${esc(buf.join('\n'))}</code></pre>`; continue; }
+    let m;
+    if ((m = l.match(/^(#{1,3})\s+(.*)$/))) { flush(); out += `<h${m[1].length}>${inlineMd(m[2])}</h${m[1].length}>`; i++; continue; }
+    if (/^\s*(---|\*\*\*)\s*$/.test(l)) { flush(); out += '<hr>'; i++; continue; }
+    if (/^>\s?/.test(l)) { flush(); const buf = []; while (i < lines.length && /^>\s?/.test(lines[i])) buf.push(lines[i++].replace(/^>\s?/, '')); out += `<blockquote>${buf.map(inlineMd).join('<br>')}</blockquote>`; continue; }
+    if (/^\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      flush(); const row = r => r.trim().replace(/^\||\|$/g, '').split('|').map(x => inlineMd(x.trim()));
+      out += '<table><tr>' + row(l).map(c => `<th>${c}</th>`).join('') + '</tr>'; i += 2;
+      while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) out += '<tr>' + row(lines[i++]).map(c => `<td>${c}</td>`).join('') + '</tr>';
+      out += '</table>'; continue;
+    }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+      flush(); const ordered = /^\s*\d/.test(l); let html = ordered ? '<ol>' : '<ul>'; let depth = 0;
+      while (i < lines.length && /^\s*([-*+]|\d+[.)])\s+/.test(lines[i])) {
+        const L = lines[i]; const ind = Math.min(4, Math.floor(L.match(/^\s*/)[0].replace(/\t/g, '  ').length / 2));
+        while (depth < ind) { html += ordered ? '<ol>' : '<ul>'; depth++; }
+        while (depth > ind) { html += ordered ? '</ol>' : '</ul>'; depth--; }
+        const t = L.replace(/^\s*([-*+]|\d+[.)])\s+/, '');
+        const tk = t.match(/^\[([ xX])\]\s*(.*)$/);
+        if (tk) { const done = tk[1] !== ' '; html += `<li class="tk${done ? ' done' : ''}"><input type="checkbox" data-ln="${i}"${done ? ' checked' : ''}><span>${inlineMd(tk[2])}</span></li>`; }
+        else html += `<li>${inlineMd(t)}</li>`;
+        i++;
+      }
+      while (depth > 0) { html += ordered ? '</ol>' : '</ul>'; depth--; }
+      out += html + (ordered ? '</ol>' : '</ul>'); continue;
+    }
+    if (!l.trim()) { flush(); i++; continue; }
+    para.push(l); i++;
+  }
+  flush();
+  return out;
+}
+function taskCount(src) { const a = String(src || '').match(/^\s*([-*+]|\d+[.)])\s+\[[ xX]\]/gm) || []; const d = String(src || '').match(/^\s*([-*+]|\d+[.)])\s+\[[xX]\]/gm) || []; return { n: a.length, d: d.length }; }
+function toggleTask(c, ln) {
+  const lines = c.body.split('\n'); const l = lines[ln]; if (l == null) return;
+  const m = l.match(/^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\].*)$/); if (!m) return;
+  pushHistory(); lines[ln] = m[1] + (m[2] === ' ' ? 'x' : ' ') + m[3]; c.body = lines.join('\n'); c.updated = Date.now(); changed();
+}
+function plainLines(src) {
+  return String(src || '').replace(/\r/g, '').split('\n').filter(l => !/^```/.test(l)).map(l => {
+    let t = l.replace(/^#{1,3}\s+/, '').replace(/^>\s?/, '│ ');
+    t = t.replace(/^(\s*)([-*+]|\d+[.)])\s+\[([ xX])\]\s*/, (_, s, b, x) => s + (x === ' ' ? '☐ ' : '☑ ')).replace(/^(\s*)[-*+]\s+/, '$1• ');
+    return t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/~~([^~]+)~~/g, '$1');
+  });
+}
+const cardLabel = c => oneLine(c.title) || oneLine(String(c.body || '').split('\n').find(l => l.trim()) || '').replace(/^[#>*\-+\s[\]x]+/i, '').slice(0, 80) || (c.type === 'image' ? 'Image' : c.type === 'link' ? hostOf(c.href) : 'Sans titre');
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u || ''; } }
+
+/* ---------- Historique ---------- */
+const snap = () => JSON.stringify({ t: board.title, co: board.color, c: board.cards, s: board.sections, e: board.edges });
+function pushHistory() { undo.push(snap()); if (undo.length > 150) undo.shift(); redo = []; lastHK = null; updateUndo(); }
+function pushHistoryC(key) { const now = Date.now(); if (key !== lastHK || now - lastHT > 1500) { undo.push(snap()); if (undo.length > 150) undo.shift(); redo = []; } lastHK = key; lastHT = now; updateUndo(); }
+function restoreSnap(s) { const o = JSON.parse(s); board.title = o.t; board.color = o.co || ''; board.cards = o.c; board.sections = o.s; board.edges = o.e; for (const id of [...sel]) if (!itemById(id)) sel.delete(id); }
+function doUndo() { if (!undo.length) return; redo.push(snap()); restoreSnap(undo.pop()); lastHK = null; changed(); syncTitle(); refreshDetail(true); updateUndo(); }
+function doRedo() { if (!redo.length) return; undo.push(snap()); restoreSnap(redo.pop()); lastHK = null; changed(); syncTitle(); refreshDetail(true); updateUndo(); }
+function updateUndo() { $('#undoBtn').disabled = !undo.length; $('#redoBtn').disabled = !redo.length; }
+
+/* ---------- Changements et brouillons ---------- */
+let draftT = null;
+function changed() {
+  board.updated = Date.now(); markDirty(true);
+  render();
+  clearTimeout(draftT); draftT = setTimeout(saveDraft, 500);
+  if (det.classList.contains('open') && !det.contains(document.activeElement)) refreshDetail();
+}
+function markDirty(v) { const e = libEntry(board.id); if (e) { e.fd = !!v; } updateMeta(); }
+async function saveDraft() {
+  clearTimeout(draftT); draftT = null;
+  if (!board) return;
+  board.view = { ...view };
+  try { await idbPut('b', board.id, board); } catch (e) { toast('Brouillon non enregistré sur cet appareil : ' + (e.message || e)); }
+  let e = libEntry(board.id);
+  if (!e) { e = { id: board.id, folder: '' }; lib.push(e); }
+  Object.assign(e, { title: board.title, color: board.color, updated: board.updated, count: board.cards.length });
+  saveLib(); renderLib();
+}
+window.addEventListener('pagehide', () => { if (board) { board.view = { ...view }; idbPut('b', board.id, board); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && board) saveDraft(); });
+
+function updateMeta() {
+  if (!board) return;
+  const e = libEntry(board.id) || {};
+  const n = board.cards.length;
+  const st = e.fileName ? (e.fd ? `<span class="st">Modifié · ${esc(e.fileName)} à enregistrer</span>` : `<span class="st ok">${esc(e.fileName)}</span>`) : `<span class="st">Brouillon sur cet appareil</span>`;
+  $('#bmeta').innerHTML = `${n} carte${n > 1 ? 's' : ''} · ${board.sections.length} cadre${board.sections.length > 1 ? 's' : ''} ${st}`;
+}
+function syncTitle() { const t = $('#btitle'); if (document.activeElement !== t) t.value = board.title; fitTitle(); document.title = board.title + ' — Canopée'; }
+function fitTitle() { const t = $('#btitle'); if (SMALL()) { t.style.width = ''; return; } t.style.width = Math.min(340, Math.max(80, t.value.length * 9 + 24)) + 'px'; }
+
+/* ============================================================
+   Rendu
+   ============================================================ */
+const ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>';
+function cardInner(c) {
+  let h = '';
+  if (c.asset) h += `<div class="im" style="aspect-ratio:1/${c.ratio || 0.75}"><img src="${board.assets[c.asset] || ''}" alt="" draggable="false"></div>`;
+  h += '<div class="cb">';
+  if (c.title || !c.asset || c.body) h += `<div class="ct">${esc(c.title)}</div>`;
+  if (c.body) h += `<div class="md">${md(c.body)}</div>`;
+  if (c.href) h += `<div class="lk" data-open="1" title="${esc(c.href)}">${ICON_LINK}<span>${esc(hostOf(c.href))}${c.type === 'link' ? '' : ' · ouvrir'}</span></div>`;
+  const tc = taskCount(c.body);
+  if (tc.n) h += `<div class="pg"><i><b style="width:${Math.round(tc.d / tc.n * 100)}%"></b></i>${tc.d}/${tc.n}</div>`;
+  if (c.tags.length) h += `<div class="tg">${c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>`;
+  h += '</div><div class="rz" data-rz="1" title="Largeur"></div><div class="port" title="Glisser pour relier"></div>';
+  return h;
+}
+const cardSig = c => JSON.stringify([c.title, c.body, c.tags, c.href, c.asset, c.ratio, c.type, c.w]);
+function renderCards() {
+  const keep = new Set();
+  for (const c of board.cards) {
+    keep.add(c.id);
+    let el = cardsEl.querySelector(`[data-id="${c.id}"]`);
+    if (!el) { el = document.createElement('div'); el.className = 'card'; el.dataset.id = c.id; cardsEl.appendChild(el); }
+    const sig = cardSig(c);
+    if (el._sig !== sig) { el.innerHTML = cardInner(c); el._sig = sig; }
+    el.style.cssText = `left:${c.x}px;top:${c.y}px;width:${c.w}px;${colVar(c.color)}`;
+    el.classList.toggle('sel', sel.has(c.id));
+  }
+  for (const el of [...cardsEl.children]) if (!keep.has(el.dataset.id)) el.remove();
+  // ordre d'empilement : ordre du tableau
+  board.cards.forEach((c, i) => { const el = cardsEl.querySelector(`[data-id="${c.id}"]`); if (el && el.style.zIndex !== String(i + 1)) el.style.zIndex = i + 1; });
+  H.clear();
+  for (const el of cardsEl.children) {
+    H.set(el.dataset.id, el.offsetHeight);
+    const m = el.querySelector('.md'); if (m) m.classList.toggle('clip', m.scrollHeight > m.clientHeight + 2);
+  }
+}
+function renderSections() {
+  const keep = new Set();
+  const counts = new Map(board.sections.map(s => [s.id, cardsIn(s).length]));
+  // les grands cadres derrière les petits
+  const ord = [...board.sections].sort((a, b) => b.w * b.h - a.w * a.h);
+  for (const s of ord) {
+    keep.add(s.id);
+    let el = secsEl.querySelector(`[data-id="${s.id}"]`);
+    if (!el) { el = document.createElement('div'); el.className = 'sec'; el.dataset.id = s.id; el.innerHTML = '<div class="sh"><span class="t"></span><span class="n"></span></div><div class="rz" data-rz="1" title="Taille"></div><div class="port" title="Glisser pour relier"></div>'; secsEl.appendChild(el); }
+    el.querySelector('.t').textContent = s.title || 'Cadre';
+    el.querySelector('.n').textContent = counts.get(s.id) ? '· ' + counts.get(s.id) : '';
+    el.style.cssText = `left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;${colVar(s.color)}`;
+    el.classList.toggle('sel', sel.has(s.id));
+    secsEl.appendChild(el);
+  }
+  for (const el of [...secsEl.children]) if (!keep.has(el.dataset.id)) el.remove();
+}
+
+/* Flèches */
+function edgeGeom(a, b) {
+  const ca = center(a), cb = center(b);
+  const gx = Math.abs(cb.x - ca.x) - (a.w + b.w) / 2, gy = Math.abs(cb.y - ca.y) - (a.h + b.h) / 2;
+  let p0, p3, n0, n3;
+  if (gx >= gy) {
+    const r = cb.x >= ca.x;
+    p0 = { x: r ? a.x + a.w : a.x, y: ca.y }; p3 = { x: r ? b.x : b.x + b.w, y: cb.y }; n0 = { x: r ? 1 : -1, y: 0 }; n3 = { x: r ? -1 : 1, y: 0 };
+  } else {
+    const d = cb.y >= ca.y;
+    p0 = { x: ca.x, y: d ? a.y + a.h : a.y }; p3 = { x: cb.x, y: d ? b.y : b.y + b.h }; n0 = { x: 0, y: d ? 1 : -1 }; n3 = { x: 0, y: d ? -1 : 1 };
+  }
+  const dist = Math.hypot(p3.x - p0.x, p3.y - p0.y); const o = clamp(dist * 0.4, 24, 160);
+  const p1 = { x: p0.x + n0.x * o, y: p0.y + n0.y * o }, p2 = { x: p3.x + n3.x * o, y: p3.y + n3.y * o };
+  return { p0, p1, p2, p3 };
+}
+function bez(g, t) { const u = 1 - t; return { x: u * u * u * g.p0.x + 3 * u * u * t * g.p1.x + 3 * u * t * t * g.p2.x + t * t * t * g.p3.x, y: u * u * u * g.p0.y + 3 * u * u * t * g.p1.y + 3 * u * t * t * g.p2.y + t * t * t * g.p3.y }; }
+function arrowPts(tip, from, s = 9) { const a = Math.atan2(tip.y - from.y, tip.x - from.x); const p = (d, r) => `${(tip.x + Math.cos(a + d) * r).toFixed(1)},${(tip.y + Math.sin(a + d) * r).toFixed(1)}`; return `${tip.x.toFixed(1)},${tip.y.toFixed(1)} ${p(Math.PI - 0.42, s)} ${p(Math.PI + 0.42, s)}`; }
+const pathD = g => `M${g.p0.x.toFixed(1)},${g.p0.y.toFixed(1)} C${g.p1.x.toFixed(1)},${g.p1.y.toFixed(1)} ${g.p2.x.toFixed(1)},${g.p2.y.toFixed(1)} ${g.p3.x.toFixed(1)},${g.p3.y.toFixed(1)}`;
+let tmpEdge = null; // {from, to:{x,y}} pendant une liaison
+function drawEdges() {
+  let s = '';
+  for (const e of board.edges) {
+    const a = rectOf(e.from), b = rectOf(e.to); if (!a || !b) continue;
+    const g = edgeGeom(a, b); const col = e.color ? COLORS[e.color].h : 'var(--edge)'; const on = sel.has(e.id);
+    s += `<g data-eid="${e.id}"${on ? ' class="sel"' : ''}><path class="hit" d="${pathD(g)}"/><path class="ln" d="${pathD(g)}" style="stroke:${on ? 'var(--sel)' : col}"/>`;
+    if (e.arrow !== 'none') s += `<polygon points="${arrowPts(g.p3, g.p2)}" style="fill:${on ? 'var(--sel)' : col}"/>`;
+    if (e.arrow === 'both') s += `<polygon points="${arrowPts(g.p0, g.p1)}" style="fill:${on ? 'var(--sel)' : col}"/>`;
+    if (e.label) { const m = bez(g, 0.5); const w = Math.min(260, e.label.length * 6.6 + 14); s += `<g class="lbl"><rect x="${(m.x - w / 2).toFixed(1)}" y="${(m.y - 11).toFixed(1)}" width="${w.toFixed(1)}" height="22" rx="7" style="fill:var(--panel);stroke:${on ? 'var(--sel)' : 'var(--line-2)'}"/><text x="${m.x.toFixed(1)}" y="${(m.y + 4).toFixed(1)}" text-anchor="middle" style="fill:var(--text)">${esc(e.label.length > 38 ? e.label.slice(0, 36) + '…' : e.label)}</text></g>`; }
+    s += '</g>';
+  }
+  if (tmpEdge) {
+    const a = rectOf(tmpEdge.from); const tr = tmpEdge.target ? rectOf(tmpEdge.target) : { x: tmpEdge.to.x, y: tmpEdge.to.y, w: 0, h: 0 };
+    if (a) { const g = edgeGeom(a, tr); s += `<path d="${pathD(g)}" style="fill:none;stroke:var(--sel);stroke-width:2;stroke-dasharray:6 4"/><polygon points="${arrowPts(g.p3, g.p2)}" style="fill:var(--sel)"/>`; }
+  }
+  edgesEl.innerHTML = s;
+}
+
+function render() {
+  if (!board) return;
+  renderSections(); renderCards(); drawEdges();
+  $('#empty').classList.toggle('show', !board.cards.length && !board.sections.length);
+  updateMeta(); renderMini();
+}
+function renderSelection() {
+  for (const el of cardsEl.children) el.classList.toggle('sel', sel.has(el.dataset.id));
+  for (const el of secsEl.children) el.classList.toggle('sel', sel.has(el.dataset.id));
+  drawEdges();
+}
+function setSel(ids, opts = {}) {
+  sel = new Set(ids);
+  renderSelection();
+  if (opts.open) openDetail(opts.focus); else if (det.classList.contains('open')) refreshDetail(true, opts.focus);
+}
+
+/* ============================================================
+   Vue : déplacement et zoom
+   ============================================================ */
+function applyView() {
+  world.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; world.style.setProperty('--iz', (1 / view.k).toFixed(3));
+  const g = 22 * view.k;
+  stage.style.backgroundImage = view.k > 0.25 ? `radial-gradient(circle, var(--dot) ${Math.max(0.8, 1.1 * Math.min(1.4, view.k))}px, transparent ${Math.max(1, 1.3 * Math.min(1.4, view.k))}px)` : 'none';
+  stage.style.backgroundSize = `${g}px ${g}px`; stage.style.backgroundPosition = `${view.x}px ${view.y}px`;
+  $('#zl').textContent = Math.round(view.k * 100) + ' %';
+  renderMini();
+}
+const stageRect = () => stage.getBoundingClientRect();
+function toWorld(cx, cy) { const r = stageRect(); return { x: (cx - r.left - view.x) / view.k, y: (cy - r.top - view.y) / view.k }; }
+function zoomAt(sx, sy, f) { const k = clamp(view.k * f, 0.1, 3); const wx = (sx - view.x) / view.k, wy = (sy - view.y) / view.k; view.k = k; view.x = sx - wx * k; view.y = sy - wy * k; applyView(); }
+function zoomCenter(f) { const r = stageRect(); zoomAt(r.width / 2, r.height / 2, f); }
+function fitTo(b, maxK = 1) {
+  const r = stageRect(); if (!b) { view = { x: r.width / 2, y: r.height / 2, k: 1 }; applyView(); return; }
+  const pad = 70, bottom = 70; const k = clamp(Math.min((r.width - pad * 2) / Math.max(b.w, 1), (r.height - pad - bottom - 20) / Math.max(b.h, 1)), 0.1, maxK);
+  view.k = k; view.x = r.width / 2 - (b.x + b.w / 2) * k; view.y = (r.height - bottom + 20) / 2 - (b.y + b.h / 2) * k; applyView();
+}
+const fit = () => fitTo(bounds());
+function viewCenterWorld() { const r = stageRect(); return { x: (r.width / 2 - view.x) / view.k, y: (r.height / 2 - 40 - view.y) / view.k }; }
+function ensureVisible(id) {
+  const rr = rectOf(id); if (!rr) return; const r = stageRect();
+  const sx = rr.x * view.k + view.x, sy = rr.y * view.k + view.y, sw = rr.w * view.k, sh = rr.h * view.k;
+  if (sx < 20 || sy < 20 || sx + sw > r.width - 20 || sy + sh > r.height - 80) { view.x = r.width / 2 - (rr.x + rr.w / 2) * view.k; view.y = (r.height - 60) / 2 - (rr.y + rr.h / 2) * view.k; applyView(); }
+}
+
+/* Minicarte */
+let miniRAF = 0, miniGeo = null;
+function renderMini() {
+  if (miniRAF) return;
+  miniRAF = requestAnimationFrame(() => {
+    miniRAF = 0;
+    const box = $('#mini'), tb = $('#tools'); tb.classList.remove('left');
+    const sw = stage.clientWidth, tw = tb.offsetWidth; let room = true;
+    if (!SMALL() && showMini) { if ((sw + tw) / 2 > sw - 190 - 14 - 12) { tb.classList.add('left'); if (14 + tw > sw - 190 - 14 - 12) { tb.classList.remove('left'); room = false; } } }
+    box.classList.toggle('hidden', !showMini || !room || !board || (!board.cards.length && !board.sections.length));
+    $$('[data-act="mini"]').forEach(b => b.classList.toggle('on', showMini));
+    if (box.classList.contains('hidden')) return;
+    const cv = $('#miniC'), dpr = window.devicePixelRatio || 1, W = box.clientWidth, Hh = box.clientHeight;
+    cv.width = W * dpr; cv.height = Hh * dpr; const x = cv.getContext('2d'); x.scale(dpr, dpr);
+    const r = stageRect(); const vb = { x: -view.x / view.k, y: -view.y / view.k, w: r.width / view.k, h: r.height / view.k };
+    const b0 = bounds() || vb; const b = { x: Math.min(b0.x, vb.x), y: Math.min(b0.y, vb.y) }; b.w = Math.max(b0.x + b0.w, vb.x + vb.w) - b.x; b.h = Math.max(b0.y + b0.h, vb.y + vb.h) - b.y;
+    const pad = 8, k = Math.min((W - pad * 2) / b.w, (Hh - pad * 2) / b.h); const ox = pad + (W - pad * 2 - b.w * k) / 2 - b.x * k, oy = pad + (Hh - pad * 2 - b.h * k) / 2 - b.y * k;
+    miniGeo = { k, ox, oy };
+    x.strokeStyle = cssv('--line-2'); x.lineWidth = 1;
+    for (const s of board.sections) { x.setLineDash([3, 2]); x.strokeStyle = s.color ? COLORS[s.color].h : cssv('--line-2'); x.strokeRect(ox + s.x * k, oy + s.y * k, s.w * k, s.h * k); }
+    x.setLineDash([]);
+    for (const c of board.cards) { const rr = rectOf(c.id); x.fillStyle = c.color ? COLORS[c.color].h : (sel.has(c.id) ? cssv('--sel') : cssv('--accent')); x.globalAlpha = c.color || sel.has(c.id) ? 0.85 : 0.55; x.fillRect(ox + rr.x * k, oy + rr.y * k, Math.max(2, rr.w * k), Math.max(2, rr.h * k)); }
+    x.globalAlpha = 1; x.strokeStyle = cssv('--text'); x.lineWidth = 1.2; x.strokeRect(ox + vb.x * k, oy + vb.y * k, vb.w * k, vb.h * k);
+  });
+}
+function miniNav(ev) {
+  if (!miniGeo) return; const b = $('#mini').getBoundingClientRect(); const r = stageRect();
+  const wx = (ev.clientX - b.left - miniGeo.ox) / miniGeo.k, wy = (ev.clientY - b.top - miniGeo.oy) / miniGeo.k;
+  view.x = r.width / 2 - wx * view.k; view.y = r.height / 2 - wy * view.k; applyView();
+}
+$('#mini').addEventListener('pointerdown', ev => { ev.stopPropagation(); ev.preventDefault(); $('#mini').setPointerCapture(ev.pointerId); miniNav(ev); const mv = e => miniNav(e); const up = () => { $('#mini').removeEventListener('pointermove', mv); $('#mini').removeEventListener('pointerup', up); }; $('#mini').addEventListener('pointermove', mv); $('#mini').addEventListener('pointerup', up); });
+
+/* ============================================================
+   Opérations
+   ============================================================ */
+function addCard(p, props = {}, opts = {}) {
+  pushHistory();
+  const w = props.w || 260;
+  const c = { id: uid('c'), type: 'text', x: Math.round(p.x - (opts.centered === false ? 0 : w / 2)), y: Math.round(p.y - (opts.centered === false ? 0 : 24)), w, title: '', body: '', tags: [], color: '', created: Date.now(), updated: Date.now(), ...props };
+  board.cards.push(c); changed();
+  if (opts.select !== false) { setSel([c.id], { open: opts.open !== false, focus: opts.focus || 'title' }); }
+  return c;
+}
+function newCardHere() {
+  const p = lastPointerWorld && Date.now() - lastPointerWorld.t < 4000 ? lastPointerWorld : viewCenterWorld();
+  const c = addCard(p, {}, {}); ensureVisible(c.id); return c;
+}
+function addSection(r, title = 'Cadre', props = {}) {
+  pushHistory();
+  const s = { id: uid('s'), x: Math.round(r.x), y: Math.round(r.y), w: Math.round(Math.max(160, r.w)), h: Math.round(Math.max(100, r.h)), title, color: '', ...props };
+  board.sections.push(s); changed(); setSel([s.id], { open: true, focus: 'title' }); return s;
+}
+function wrapSelection() {
+  const ids = [...sel].filter(id => kindOf(id) !== 'edge');
+  if (!ids.length) { const p = viewCenterWorld(); addSection({ x: p.x - 220, y: p.y - 150, w: 440, h: 300 }); return; }
+  const b = bounds(ids); addSection({ x: b.x - 24, y: b.y - 36, w: b.w + 48, h: b.h + 60 });
+}
+function addEdge(from, to, props = {}) {
+  if (from === to) return null;
+  if (board.edges.some(e => e.from === from && e.to === to)) { toast('Ces deux éléments sont déjà reliés.'); return null; }
+  pushHistory(); const e = { id: uid('e'), from, to, label: '', color: '', arrow: 'end', ...props }; board.edges.push(e); changed(); return e;
+}
+function deleteIds(ids) {
+  ids = new Set(ids); if (!ids.size) return;
+  pushHistory();
+  board.cards = board.cards.filter(c => !ids.has(c.id));
+  board.sections = board.sections.filter(s => !ids.has(s.id));
+  board.edges = board.edges.filter(e => !ids.has(e.id) && !ids.has(e.from) && !ids.has(e.to));
+  sel = new Set(); changed(); refreshDetail(true);
+}
+const deleteSel = () => deleteIds([...sel]);
+function selectionWithContents() {
+  const ids = new Set();
+  for (const id of sel) {
+    if (kindOf(id) === 'card') ids.add(id);
+    if (kindOf(id) === 'sec') { const s = secById(id); ids.add(id); cardsIn(s).forEach(c => ids.add(c.id)); sectionsIn(s).forEach(o => { ids.add(o.id); cardsIn(o).forEach(c => ids.add(c.id)); }); }
+  }
+  return ids;
+}
+function cloneItems(ids, dx, dy, src = board) {
+  const map = {}; const out = { cards: [], sections: [], edges: [], assets: {} };
+  for (const c of src.cards) if (ids.has(c.id)) { const n = { ...deepCopy(c), id: uid('c'), x: c.x + dx, y: c.y + dy, created: Date.now(), updated: Date.now() }; map[c.id] = n.id; out.cards.push(n); if (c.asset && src.assets[c.asset]) out.assets[c.asset] = src.assets[c.asset]; }
+  for (const s of src.sections) if (ids.has(s.id)) { const n = { ...deepCopy(s), id: uid('s'), x: s.x + dx, y: s.y + dy }; map[s.id] = n.id; out.sections.push(n); }
+  for (const e of src.edges) if (map[e.from] && map[e.to]) out.edges.push({ ...deepCopy(e), id: uid('e'), from: map[e.from], to: map[e.to] });
+  return out;
+}
+function insertItems(o) {
+  pushHistory();
+  Object.assign(board.assets, o.assets || {});
+  board.sections.push(...o.sections); board.cards.push(...o.cards); board.edges.push(...o.edges);
+  changed(); setSel([...o.cards.map(c => c.id), ...o.sections.map(s => s.id)]);
+}
+function duplicateSel() { const ids = selectionWithContents(); if (!ids.size) return; insertItems(cloneItems(ids, 30, 30)); }
+function bringToFront(ids) { const set = new Set(ids); const a = board.cards.filter(c => !set.has(c.id)), b = board.cards.filter(c => set.has(c.id)); board.cards = [...a, ...b]; }
+/* Rangement en colonnes (maçonnerie) */
+function arrange(cards, x0, y0, ncols) {
+  if (!cards.length) return;
+  const sorted = [...cards].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const n = ncols || clamp(Math.ceil(Math.sqrt(sorted.length)), 1, 4);
+  const colW = Math.max(...sorted.map(c => c.w)), gap = 20; const hs = new Array(n).fill(0);
+  for (const c of sorted) { let i = 0; for (let j = 1; j < n; j++) if (hs[j] < hs[i] - 1) i = j; c.x = x0 + i * (colW + gap); c.y = y0 + hs[i]; hs[i] += (H.get(c.id) || estimateH(c)) + gap; }
+}
+function arrangeSection(s, ncols) { const cs = cardsIn(s); if (!cs.length) return; pushHistory(); arrange(cs, s.x + 20, s.y + 28, ncols || (s.w > 0 ? clamp(Math.floor((s.w - 20) / (Math.max(...cs.map(c => c.w)) + 20)), 1, 6) : 0)); changed(); fitSectionNow(s); changed(); }
+function fitSectionNow(s) { const cs = cardsIn(s); if (!cs.length) return; const b = bounds(cs.map(c => c.id)); s.x = b.x - 20; s.y = b.y - 28; s.w = b.w + 40; s.h = b.h + 48; }
+function fitSection(s) { pushHistory(); fitSectionNow(s); changed(); }
+function alignSel(mode) {
+  const cs = [...sel].map(cardById).filter(Boolean); if (cs.length < 2) return; pushHistory();
+  if (mode === 'left') { const x = Math.min(...cs.map(c => c.x)); cs.forEach(c => c.x = x); }
+  if (mode === 'top') { const y = Math.min(...cs.map(c => c.y)); cs.forEach(c => c.y = y); }
+  if (mode === 'grid') { const b = bounds(cs.map(c => c.id)); arrange(cs, b.x, b.y); }
+  changed();
+}
+function setColor(ids, col) { pushHistory(); for (const id of ids) { const it = itemById(id); if (it && kindOf(id) !== 'edge') it.color = col; else if (it) it.color = col; } changed(); refreshDetail(true); }
+
+/* Images */
+async function fileToAsset(file) {
+  const url = URL.createObjectURL(file); const img = new Image(); img.src = url; await img.decode();
+  const max = 1600, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const W = Math.max(1, Math.round(img.naturalWidth * k)), Hh = Math.max(1, Math.round(img.naturalHeight * k));
+  let src;
+  if (/png|gif|webp/.test(file.type) && file.size < 300000 && k === 1) src = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(file); });
+  else { const c = document.createElement('canvas'); c.width = W; c.height = Hh; const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, Hh); x.drawImage(img, 0, 0, W, Hh); src = c.toDataURL('image/jpeg', 0.85); }
+  URL.revokeObjectURL(url);
+  if (!IMG_RE.test(src)) throw new Error('format non pris en charge');
+  const id = uid('a'); board.assets[id] = src; return { id, ratio: Hh / W, kb: Math.round(src.length * 0.75 / 1024) };
+}
+async function addImages(files, p, targetId) {
+  files = [...files].filter(f => /^image\//.test(f.type)); if (!files.length) { toast('Ce fichier n’est pas une image. Pour un document, ajoute plutôt un lien SharePoint ou OneDrive.'); return; }
+  const made = []; let x = p.x, kb = 0;
+  for (const f of files) {
+    try {
+      const a = await fileToAsset(f); kb += a.kb;
+      if (targetId && files.length === 1 && cardById(targetId)) { const c = cardById(targetId); pushHistory(); c.asset = a.id; c.ratio = a.ratio; if (c.type === 'text') c.type = 'image'; changed(); refreshDetail(true); toast(`Image ajoutée (${a.kb} Ko).`); return; }
+      if (!made.length) pushHistory();
+      const c = { id: uid('c'), type: 'image', x: Math.round(x), y: Math.round(p.y), w: 260, title: f.name.replace(/\.[^.]+$/, '').slice(0, 80), body: '', tags: [], color: '', asset: a.id, ratio: a.ratio, created: Date.now(), updated: Date.now() };
+      board.cards.push(c); made.push(c.id); x += 280;
+    } catch (err) { toast('Image illisible : ' + (err.message || err)); }
+  }
+  if (made.length) { changed(); setSel(made); toast(`${made.length} image${made.length > 1 ? 's' : ''} ajoutée${made.length > 1 ? 's' : ''} (${kb} Ko).`); }
+}
+let imgTarget = null;
+function pickImage(targetId) { imgTarget = targetId || null; $('#imgIn').value = ''; $('#imgIn').click(); }
+$('#imgIn').addEventListener('change', e => { const p = imgTarget ? null : (lastPointerWorld && Date.now() - lastPointerWorld.t < 4000 ? lastPointerWorld : viewCenterWorld()); addImages(e.target.files, p || viewCenterWorld(), imgTarget); });
+function askLink() {
+  showModal('Lien web ou document', `<p class="note">Adresse d’une page web, d’un document SharePoint ou OneDrive (bouton « Copier le lien »).</p><input class="inp" id="lkU" placeholder="https://…"><div class="fl">Titre (facultatif)</div><input class="inp" id="lkT" placeholder="ex. Guide INERIS stockage batteries"><div class="row" style="margin-top:14px"><button class="btn pri" id="lkOk">Ajouter la carte</button><button class="btn" id="lkNo">Annuler</button></div>`, b => {
+    const u = b.querySelector('#lkU'); setTimeout(() => u.focus(), 30);
+    const ok = () => { const v = u.value.trim(); if (!HREF_RE.test(v)) { toast('L’adresse doit commencer par https:// ou http://'); return; } closeModal(); const c = addCard(viewCenterWorld(), { type: 'link', href: v, title: b.querySelector('#lkT').value.trim() || hostOf(v) }, { focus: 'body' }); ensureVisible(c.id); };
+    b.querySelector('#lkOk').onclick = ok; b.querySelector('#lkNo').onclick = closeModal;
+    b.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+  });
+}
+function openHref(u) { if (u && HREF_RE.test(u)) window.open(u, '_blank', 'noopener'); }
+
+/* ============================================================
+   Pointeur
+   ============================================================ */
+let drag = null; const pointers = new Map(); let pinch = null; let lastTap = { t: 0, x: 0, y: 0, id: null };
+function setTool(t) { tool = t; for (const b of $$('#tools [data-tool]')) b.classList.toggle('on', b.dataset.tool === t); stage.className = t === 'hand' ? 'hand' : t !== 'select' ? 'tool-' + t : ''; }
+function ownerOf(el) { const c = el.closest('.card,.sec'); return c ? c.dataset.id : null; }
+stage.addEventListener('pointerdown', ev => {
+  if (ev.target.closest('#tools,#mini')) return;
+  closeMenus();
+  if (document.activeElement && document.activeElement !== stage && !det.contains(document.activeElement)) document.activeElement.blur();
+  if (document.activeElement && det.contains(document.activeElement)) document.activeElement.blur();
+  stage.focus({ preventScroll: true });
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pointers.size === 2) { startPinch(); return; }
+  if (pointers.size > 2) return;
+  const w = toWorld(ev.clientX, ev.clientY); lastPointerWorld = { ...w, t: Date.now() };
+  const base = { pid: ev.pointerId, sx: ev.clientX, sy: ev.clientY, w0: w, moved: false, shift: ev.shiftKey || ev.ctrlKey || ev.metaKey, touch: ev.pointerType === 'touch', target: ev.target };
+  if (ev.button === 1 || (ev.button === 0 && (tool === 'hand' || spaceDown))) { drag = { ...base, type: 'pan', vx: view.x, vy: view.y }; stage.classList.add('panning'); stage.setPointerCapture(ev.pointerId); ev.preventDefault(); return; }
+  if (ev.button !== 0) return;
+  const t = ev.target;
+  const port = t.closest('.port'); const rz = t.closest('[data-rz]'); const cardEl = t.closest('.card'); const sh = t.closest('.sh'); const eg = t.closest('[data-eid]'); const secEl = t.closest('.sec');
+  if (port || (tool === 'connect' && (cardEl || sh))) {
+    const from = ownerOf(port || cardEl || sh); drag = { ...base, type: 'connect', from }; tmpEdge = { from, to: w }; stage.setPointerCapture(ev.pointerId); ev.preventDefault(); return;
+  }
+  if (rz) { const id = ownerOf(rz); const it = itemById(id); pushHistory(); drag = { ...base, type: 'resize', id, ow: it.w, oh: it.h, sec: kindOf(id) === 'sec' }; stage.setPointerCapture(ev.pointerId); ev.preventDefault(); return; }
+  if (cardEl || sh) {
+    const id = cardEl ? cardEl.dataset.id : ownerOf(sh);
+    if (t.matches('input[type=checkbox]') || t.closest('a,[data-open]')) { drag = { ...base, type: 'click', id }; stage.setPointerCapture(ev.pointerId); ev.preventDefault(); return; }
+    let toggled = false;
+    if (base.shift) { const n = new Set(sel); if (n.has(id)) n.delete(id); else n.add(id); setSel(n); toggled = true; }
+    else if (!sel.has(id)) setSel([id]);
+    if (!sel.has(id)) { drag = null; return; }
+    drag = { ...base, type: 'move', id, toggled };
+    stage.setPointerCapture(ev.pointerId); ev.preventDefault(); return;
+  }
+  if (eg && !base.touch || (eg && base.touch)) { const id = eg.dataset.eid; if (base.shift) { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); } else setSel([id]); drag = { ...base, type: 'click', id }; stage.setPointerCapture(ev.pointerId); return; }
+  // espace vide (ou fond d'un cadre)
+  if (tool === 'card') { drag = { ...base, type: 'placeCard' }; stage.setPointerCapture(ev.pointerId); return; }
+  if (tool === 'section') { drag = { ...base, type: 'drawSec' }; stage.setPointerCapture(ev.pointerId); return; }
+  const inSec = secEl ? secEl.dataset.id : null;
+  if (base.touch) { drag = { ...base, type: 'pan', vx: view.x, vy: view.y, inSec }; stage.setPointerCapture(ev.pointerId); return; }
+  drag = { ...base, type: 'marquee', inSec, before: base.shift ? new Set(sel) : new Set() }; stage.setPointerCapture(ev.pointerId); ev.preventDefault();
+});
+stage.addEventListener('pointermove', ev => {
+  if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  const w = toWorld(ev.clientX, ev.clientY); lastPointerWorld = { ...w, t: Date.now() };
+  if (pinch) { movePinch(); return; }
+  if (!drag || drag.pid !== ev.pointerId) return;
+  const dxs = ev.clientX - drag.sx, dys = ev.clientY - drag.sy;
+  if (!drag.moved && Math.hypot(dxs, dys) < (drag.touch ? 8 : 4)) return;
+  const first = !drag.moved; drag.moved = true;
+  const dx = (w.x - drag.w0.x), dy = (w.y - drag.w0.y);
+  switch (drag.type) {
+    case 'pan': view.x = drag.vx + dxs; view.y = drag.vy + dys; applyView(); break;
+    case 'move': {
+      if (first) {
+        pushHistory();
+        const ids = selectionWithContents(); drag.items = [...ids].map(id => { const it = itemById(id); return { it, x: it.x, y: it.y, el: (kindOf(id) === 'card' ? cardsEl : secsEl).querySelector(`[data-id="${id}"]`) }; });
+        bringToFront([...ids].filter(id => kindOf(id) === 'card')); board.cards.forEach((c, i) => { const el = cardsEl.querySelector(`[data-id="${c.id}"]`); if (el) el.style.zIndex = i + 1; });
+      }
+      for (const m of drag.items) { m.it.x = Math.round(m.x + dx); m.it.y = Math.round(m.y + dy); if (m.el) { m.el.style.left = m.it.x + 'px'; m.el.style.top = m.it.y + 'px'; } }
+      drawEdges(); renderMini(); break;
+    }
+    case 'resize': {
+      const it = itemById(drag.id); const el = (drag.sec ? secsEl : cardsEl).querySelector(`[data-id="${drag.id}"]`);
+      if (drag.sec) { it.w = Math.round(Math.max(160, drag.ow + dx)); it.h = Math.round(Math.max(100, drag.oh + dy)); el.style.width = it.w + 'px'; el.style.height = it.h + 'px'; }
+      else { it.w = Math.round(clamp(drag.ow + dx, 140, 900)); el.style.width = it.w + 'px'; H.set(it.id, el.offsetHeight); }
+      drawEdges(); break;
+    }
+    case 'connect': {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY); const tid = el && el.closest('#stage') ? ownerOf(el) : null;
+      tmpEdge = { from: drag.from, to: w, target: tid && tid !== drag.from ? tid : null };
+      $$('.card.hit,.sec.hit').forEach(e => e.classList.remove('hit')); if (tmpEdge.target) { const te = document.querySelector(`[data-id="${tmpEdge.target}"]`); if (te) te.classList.add('hit'); }
+      drawEdges(); break;
+    }
+    case 'marquee': case 'drawSec': {
+      const r = stageRect(); const x1 = Math.min(drag.sx, ev.clientX) - r.left, y1 = Math.min(drag.sy, ev.clientY) - r.top;
+      const m = $('#marquee'); m.style.display = 'block'; m.style.left = x1 + 'px'; m.style.top = y1 + 'px'; m.style.width = Math.abs(dxs) + 'px'; m.style.height = Math.abs(dys) + 'px';
+      m.style.borderStyle = drag.type === 'drawSec' ? 'dashed' : 'solid';
+      if (drag.type === 'marquee') {
+        const wr = { x: Math.min(drag.w0.x, w.x), y: Math.min(drag.w0.y, w.y), w: Math.abs(dx), h: Math.abs(dy) };
+        const n = new Set(drag.before);
+        for (const c of board.cards) if (intersects(wr, rectOf(c.id))) n.add(c.id);
+        for (const s of board.sections) if (contains(wr, s)) n.add(s.id);
+        sel = n; renderSelection();
+      }
+      break;
+    }
+    case 'click': case 'placeCard': break;
+  }
+});
+function endPointer(ev) {
+  pointers.delete(ev.pointerId);
+  if (pinch) { if (pointers.size < 2) { pinch = null; drag = null; } return; }
+  if (!drag || drag.pid !== ev.pointerId) return;
+  const d = drag; drag = null; stage.classList.remove('panning');
+  const w = toWorld(ev.clientX, ev.clientY);
+  $('#marquee').style.display = 'none';
+  if (ev.type === 'pointercancel') { tmpEdge = null; drawEdges(); return; }
+  if (d.type === 'move' && d.moved) { changed(); if (det.classList.contains('open')) refreshDetail(true); return; }
+  if (d.type === 'resize') { if (d.moved) changed(); else undo.pop(); updateUndo(); return; }
+  if (d.type === 'connect') {
+    $$('.card.hit,.sec.hit').forEach(e => e.classList.remove('hit'));
+    const tgt = tmpEdge && tmpEdge.target; tmpEdge = null;
+    if (tgt) { const e = addEdge(d.from, tgt); if (e) setSel([e.id]); }
+    else if (d.moved) { const c = addCard(w, {}, { focus: 'title' }); board.edges.push({ id: uid('e'), from: d.from, to: c.id, label: '', color: '', arrow: 'end' }); changed(); }
+    else drawEdges();
+    if (tool === 'connect' && !IS_TOUCH()) {} else setTool('select');
+    return;
+  }
+  if (d.type === 'marquee') { if (d.moved) { setSel([...sel]); return; } }
+  if (d.type === 'drawSec') { setTool('select'); if (d.moved) { const r = { x: Math.min(d.w0.x, w.x), y: Math.min(d.w0.y, w.y), w: Math.abs(w.x - d.w0.x), h: Math.abs(w.y - d.w0.y) }; addSection(r); } else addSection({ x: w.x - 200, y: w.y - 140, w: 400, h: 280 }); return; }
+  if (d.type === 'placeCard') { setTool('select'); addCard(w); return; }
+  if (d.type === 'pan' && d.moved) return;
+  // clic simple
+  const now = Date.now(); const tapId = d.id || d.inSec || null;
+  const dbl = now - lastTap.t < 380 && Math.hypot(ev.clientX - lastTap.x, ev.clientY - lastTap.y) < 24 && lastTap.id === tapId;
+  lastTap = { t: dbl ? 0 : now, x: ev.clientX, y: ev.clientY, id: tapId };
+  if (d.type === 'click') {
+    const t = d.target; const c = cardById(d.id);
+    if (c && t.matches('input[type=checkbox]')) { toggleTask(c, +t.dataset.ln); return; }
+    const a = t.closest('a'); if (a) { openHref(a.getAttribute('href')); return; }
+    if (c && t.closest('[data-open]')) { openHref(c.href); return; }
+    if (kindOf(d.id) === 'edge' && dbl) { openDetail('label'); return; }
+    return;
+  }
+  if (d.type === 'move') {
+    if (dbl) { setSel([d.id], { open: true, focus: kindOf(d.id) === 'sec' ? 'title' : 'body' }); return; }
+    if (!d.shift && sel.size > 1 && !d.toggled) setSel([d.id]);
+    return;
+  }
+  // fond
+  if (dbl) { if (d.inSec && !d.touch) {} addCard(w); return; }
+  if (d.type === 'marquee' || d.type === 'pan') { if (d.inSec) setSel([d.inSec]); else if (!d.shift) setSel([]); }
+}
+stage.addEventListener('pointerup', endPointer);
+stage.addEventListener('pointercancel', endPointer);
+stage.addEventListener('click', ev => { if (ev.target.matches('input[type=checkbox]') || ev.target.closest('a')) ev.preventDefault(); });
+function startPinch() {
+  const [a, b] = [...pointers.values()];
+  if (drag && drag.type === 'move' && drag.moved) changed();
+  drag = null; tmpEdge = null; $('#marquee').style.display = 'none';
+  const r = stageRect(); const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
+  pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, k0: view.k, mid0: mid, wx: (mid.x - view.x) / view.k, wy: (mid.y - view.y) / view.k };
+}
+function movePinch() {
+  const [a, b] = [...pointers.values()]; if (!a || !b) return;
+  const r = stageRect(); const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
+  const k = clamp(pinch.k0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d0, 0.1, 3);
+  view.k = k; view.x = mid.x - pinch.wx * k; view.y = mid.y - pinch.wy * k; applyView();
+}
+stage.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const r = stageRect(); const sx = ev.clientX - r.left, sy = ev.clientY - r.top;
+  if (ev.ctrlKey || ev.metaKey) zoomAt(sx, sy, Math.exp(-clamp(ev.deltaY, -60, 60) * 0.01));
+  else { const f = ev.deltaMode === 1 ? 16 : 1; view.x -= (ev.shiftKey && !ev.deltaX ? ev.deltaY : ev.deltaX) * f; view.y -= (ev.shiftKey && !ev.deltaX ? 0 : ev.deltaY) * f; applyView(); }
+}, { passive: false });
+stage.addEventListener('contextmenu', ev => {
+  ev.preventDefault();
+  const id = ownerOf(ev.target) || (ev.target.closest('[data-eid]') || {}).dataset?.eid;
+  if (id && !sel.has(id)) setSel([id]);
+  if (!id) { lastPointerWorld = { ...toWorld(ev.clientX, ev.clientY), t: Date.now() }; }
+  openCtx(ev.clientX, ev.clientY, id ? 'item' : 'canvas');
+});
+
+/* ============================================================
+   Clavier, presse-papiers, glisser-déposer
+   ============================================================ */
+const typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable); };
+document.addEventListener('keydown', ev => {
+  const k = ev.key, mod = ev.ctrlKey || ev.metaKey;
+  if (k === 'Escape') {
+    if ($('#pal').classList.contains('open')) { closePalette(); return; }
+    if ($('#modal').classList.contains('open')) { closeModal(); return; }
+    if (closeMenus()) return;
+    if (typing()) { document.activeElement.blur(); stage.focus(); return; }
+    if (tool !== 'select') { setTool('select'); return; }
+    if (sel.size) { setSel([]); return; }
+    if (det.classList.contains('open') && SMALL()) closeDetail();
+    return;
+  }
+  if (mod && k.toLowerCase() === 'k') { ev.preventDefault(); openPalette(); return; }
+  if (mod && k.toLowerCase() === 's') { ev.preventDefault(); saveFile(ev.shiftKey); return; }
+  if (mod && k.toLowerCase() === 'o') { ev.preventDefault(); openFile(); return; }
+  if (mod && k === '\\') { ev.preventDefault(); toggleSide(); return; }
+  if (mod && k.toLowerCase() === 'i') { ev.preventDefault(); det.classList.contains('open') ? closeDetail() : openDetail(); return; }
+  if ($('#modal').classList.contains('open') || $('#pal').classList.contains('open')) return;
+  if (typing()) return;
+  if (mod && k.toLowerCase() === 'z') { ev.preventDefault(); ev.shiftKey ? doRedo() : doUndo(); return; }
+  if (mod && k.toLowerCase() === 'y') { ev.preventDefault(); doRedo(); return; }
+  if (mod && k.toLowerCase() === 'a') { ev.preventDefault(); setSel([...board.cards.map(c => c.id), ...board.sections.map(s => s.id)]); return; }
+  if (mod && k.toLowerCase() === 'd') { ev.preventDefault(); duplicateSel(); return; }
+  if (mod && k.toLowerCase() === 'g') { ev.preventDefault(); wrapSelection(); return; }
+  if (mod && (k.toLowerCase() === 'c' || k.toLowerCase() === 'x')) { if (!sel.size) return; ev.preventDefault(); copySel(); if (k.toLowerCase() === 'x') deleteSel(); return; }
+  if (mod) return;
+  if (k === ' ') { spaceDown = true; stage.classList.add('hand'); ev.preventDefault(); return; }
+  if (k === 'Delete' || k === 'Backspace') { if (sel.size) { ev.preventDefault(); deleteSel(); } return; }
+  if (k === 'Enter' || k === 'F2') { const id = [...sel][0]; if (id) { ev.preventDefault(); openDetail(k === 'F2' || kindOf(id) === 'sec' ? 'title' : kindOf(id) === 'edge' ? 'label' : 'body'); } return; }
+  if (k.startsWith('Arrow') && sel.size) {
+    ev.preventDefault(); const s = ev.shiftKey ? 20 : 2; const dx = k === 'ArrowLeft' ? -s : k === 'ArrowRight' ? s : 0, dy = k === 'ArrowUp' ? -s : k === 'ArrowDown' ? s : 0;
+    pushHistoryC('nudge'); for (const id of selectionWithContents()) { const it = itemById(id); it.x += dx; it.y += dy; } changed(); return;
+  }
+  const map = { n: () => newCardHere(), s: () => wrapSelection(), c: () => setTool('connect'), v: () => setTool('select'), h: () => setTool('hand'), i: () => pickImage(), l: () => askLink(), m: () => toggleMini(), f: () => fit(), '0': () => { const r = stageRect(); zoomAt(r.width / 2, r.height / 2, 1 / view.k); }, '+': () => zoomCenter(1.2), '=': () => zoomCenter(1.2), '-': () => zoomCenter(1 / 1.2), '?': () => showHelp() };
+  if (ev.shiftKey && k === '!' || ev.shiftKey && ev.code === 'Digit1') { fit(); return; }
+  if (ev.shiftKey && ev.code === 'Digit2') { if (sel.size) fitTo(bounds([...sel].filter(id => kindOf(id) !== 'edge')), 1.5); return; }
+  const f = map[k.toLowerCase()] || map[k]; if (f) { ev.preventDefault(); f(); }
+});
+document.addEventListener('keyup', ev => { if (ev.key === ' ') { spaceDown = false; stage.classList.toggle('hand', tool === 'hand'); } });
+window.addEventListener('blur', () => { spaceDown = false; });
+
+function clipMarkdown(ids) {
+  const cs = board.cards.filter(c => ids.has(c.id));
+  return cs.map(cardMarkdown).join('\n\n');
+}
+function cardMarkdown(c) { let s = '### ' + (oneLine(c.title) || cardLabel(c)) + '\n'; if (c.body) s += '\n' + c.body.trim() + '\n'; if (c.href) s += '\n' + c.href + '\n'; if (c.tags.length) s += '\n' + c.tags.map(t => '#' + t.replace(/\s+/g, '_')).join(' ') + '\n'; return s.trim(); }
+let memClip = null;
+function copySel() {
+  const ids = selectionWithContents(); if (!ids.size) return;
+  const o = cloneItems(ids, 0, 0); const text = clipMarkdown(ids) || ' ';
+  memClip = { o, text };
+  try { LS.set('canopee:clip', JSON.stringify({ o, text })); } catch (e) {}
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(() => {});
+  toast(`${o.cards.length + o.sections.length} élément${o.cards.length + o.sections.length > 1 ? 's' : ''} copié${o.cards.length + o.sections.length > 1 ? 's' : ''}.`);
+}
+function pastePoint() { return lastPointerWorld && Date.now() - lastPointerWorld.t < 5000 ? lastPointerWorld : viewCenterWorld(); }
+function pasteInternal(clip) {
+  const o = deepCopy(clip.o); const b = { x: Math.min(...[...o.cards, ...o.sections].map(i => i.x)), y: Math.min(...[...o.cards, ...o.sections].map(i => i.y)) };
+  const p = pastePoint(); const tmp = { cards: o.cards, sections: o.sections, edges: o.edges, assets: o.assets };
+  const ids = new Set([...o.cards.map(c => c.id), ...o.sections.map(s => s.id)]);
+  insertItems(cloneItems(ids, Math.round(p.x - b.x), Math.round(p.y - b.y), tmp));
+}
+document.addEventListener('paste', ev => {
+  if (typing() || !board || $('#modal').classList.contains('open')) return;
+  const dt = ev.clipboardData; if (!dt) return;
+  const files = [...dt.files || []].filter(f => /^image\//.test(f.type));
+  if (files.length) { ev.preventDefault(); addImages(files, pastePoint(), sel.size === 1 && kindOf([...sel][0]) === 'card' && !cardById([...sel][0]).asset ? null : null); return; }
+  const text = dt.getData('text/plain'); if (!text) return;
+  ev.preventDefault();
+  let clip = memClip; if (!clip) clip = LSJ('canopee:clip', null);
+  if (clip && clip.text && text.trim() === clip.text.trim()) { pasteInternal(clip); return; }
+  pasteText(text, pastePoint());
+});
+function pasteText(text, p) {
+  const t = text.trim();
+  if (HREF_RE.test(t) && !/\s/.test(t)) { addCard(p, { type: 'link', href: t, title: hostOf(t) }, { focus: 'title' }); return; }
+  const lines = t.split(/\r?\n/);
+  if (lines.length > 1 && lines[0].length <= 120) addCard(p, { title: lines[0].replace(/^#+\s*/, ''), body: lines.slice(1).join('\n').trim() }, { open: false });
+  else addCard(p, { title: t.length <= 120 ? t : '', body: t.length > 120 ? t : '' }, { open: false });
+}
+stage.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
+stage.addEventListener('drop', async ev => {
+  ev.preventDefault(); const p = toWorld(ev.clientX, ev.clientY); const dt = ev.dataTransfer;
+  const files = [...dt.files || []];
+  const docs = files.filter(f => /\.(canopee|ramure|json)$/i.test(f.name)); if (docs.length) { for (const f of docs) await openFromFile(f, null); return; }
+  const imgs = files.filter(f => /^image\//.test(f.type)); if (imgs.length) { const el = document.elementFromPoint(ev.clientX, ev.clientY); const tid = el ? ownerOf(el) : null; addImages(imgs, p, tid && kindOf(tid) === 'card' && imgs.length === 1 ? tid : null); return; }
+  if (files.length) { toast('Seules les images peuvent être déposées. Pour un document, ajoute un lien SharePoint ou OneDrive.'); return; }
+  const u = dt.getData('text/uri-list') || dt.getData('text/plain'); if (u) pasteText(u, p);
+});
+
+/* ============================================================
+   Panneau de détail
+   ============================================================ */
+const dBody = $('#detBody'), dFoot = $('#detFoot');
+function openDetail(focus) { det.classList.add('open'); LS.set('canopee:det', '1'); refreshDetail(true, focus); }
+function closeDetail() { det.classList.remove('open'); LS.set('canopee:det', '0'); stage.focus({ preventScroll: true }); }
+let detKey = '';
+function refreshDetail(force, focus) {
+  if (!board || !det.classList.contains('open')) return;
+  const ids = [...sel]; const key = ids.join(',') + '|' + (ids.length === 1 ? '' : ids.length);
+  if (!force && key === detKey && det.contains(document.activeElement)) return;
+  detKey = key;
+  if (ids.length === 1 && kindOf(ids[0]) === 'card') detCard(cardById(ids[0]), focus);
+  else if (ids.length === 1 && kindOf(ids[0]) === 'sec') detSec(secById(ids[0]), focus);
+  else if (ids.length === 1 && kindOf(ids[0]) === 'edge') detEdge(edgeById(ids[0]), focus);
+  else if (ids.length > 1) detMulti(ids);
+  else detBoard();
+}
+const fBtn = (id, label, cls = '') => `<button class="btn ${cls}" id="${id}">${label}</button>`;
+function head(type, date) { $('#dType').textContent = type; $('#dDate').textContent = date ? '· ' + fmtDate(date) : ''; $('#dSaved').textContent = ''; }
+function bindSwatches(root, ids) { root.querySelectorAll('[data-col]').forEach(b => b.onclick = () => setColor(ids, b.dataset.col)); }
+function detCard(c, focus) {
+  head(c.type === 'image' ? 'image' : c.type === 'link' ? 'lien' : 'texte', c.created);
+  const tc = taskCount(c.body); const sec = sectionOf(c);
+  const out = board.edges.filter(e => e.from === c.id), inn = board.edges.filter(e => e.to === c.id);
+  const lbl = id => { const it = itemById(id); return it ? (kindOf(id) === 'sec' ? '▢ ' + (it.title || 'Cadre') : cardLabel(it)) : '?'; };
+  dBody.innerHTML = `<input class="dt" id="dTitle" placeholder="Titre" value="${esc(c.title)}">
+    ${c.asset ? `<div class="dimg"><img src="${board.assets[c.asset] || ''}" alt=""></div><div class="row" style="margin:8px 0 4px"><button class="btn" id="dImgR">Remplacer l’image</button><button class="btn" id="dImgX">Retirer l’image</button></div>` : ''}
+    <div class="dtabs"><button data-m="w" class="${editMode === 'w' ? 'on' : ''}">Écrire</button><button data-m="p" class="${editMode === 'p' ? 'on' : ''}">Aperçu</button><span class="cnt" id="dCnt" title="Tâches cochées">${tc.n ? tc.d + '/' + tc.n + ' tâches' : ''}</span></div>
+    <textarea id="dBody" class="${editMode === 'p' ? 'hidden' : ''}" placeholder="Écris en Markdown :\n- [ ] une tâche\n**gras**, *italique*, # titre\n[texte](https://…)">${esc(c.body)}</textarea>
+    <div id="dPrev" class="md ${editMode === 'w' ? 'hidden' : ''}">${md(c.body) || '<p class="note">Rien à afficher.</p>'}</div>
+    <div class="fl">Étiquettes</div><input class="inp" id="dTags" placeholder="ex. BESS, à lire, terrain (séparées par des virgules)" value="${esc(c.tags.join(', '))}">
+    <div class="fl">Couleur</div>${swatches(c.color)}
+    <div class="fl">Lien web ou document</div><div class="row"><input class="inp" id="dHref" style="flex:1" placeholder="https://… (SharePoint, OneDrive, web)" value="${esc(c.href || '')}"><button class="btn" id="dHrefGo"${c.href ? '' : ' disabled'}>Ouvrir</button></div>
+    ${!c.asset ? '<div class="row" style="margin-top:10px"><button class="btn" id="dImgA">Ajouter une image ou une photo</button></div>' : ''}
+    <div class="fl">Liaisons (${out.length + inn.length})</div>
+    ${out.length + inn.length ? `<ul class="lst">${out.map(e => `<li><span class="ar">→</span><button class="go" data-go="${e.to}">${esc(lbl(e.to))}${e.label ? ' · <i>' + esc(e.label) + '</i>' : ''}</button><button class="ib" data-rm="${e.id}" title="Supprimer la liaison">✕</button></li>`).join('')}${inn.map(e => `<li><span class="ar">←</span><button class="go" data-go="${e.from}">${esc(lbl(e.from))}${e.label ? ' · <i>' + esc(e.label) + '</i>' : ''}</button><button class="ib" data-rm="${e.id}" title="Supprimer la liaison">✕</button></li>`).join('')}</ul>` : '<p class="note">Aucune. Glisse le rond sur le bord de la carte vers une autre carte.</p>'}
+    <div class="fl">Cadre</div><p class="note" style="margin:0">${sec ? 'Dans « ' + esc(sec.title || 'Cadre') + ' »' : 'Hors cadre'}</p>`;
+  dFoot.innerHTML = fBtn('fCopy', 'Copier en Markdown') + fBtn('fDup', 'Dupliquer') + fBtn('fDel', 'Supprimer', 'dng');
+  const T = $('#dTitle'), B = $('#dBody');
+  T.oninput = () => { pushHistoryC('t' + c.id); c.title = T.value.slice(0, 300); c.updated = Date.now(); changed(); };
+  T.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); if (editMode === 'p') setEditMode('w'); B.focus(); } };
+  B.oninput = () => { pushHistoryC('b' + c.id); c.body = B.value; c.updated = Date.now(); changed(); const t2 = taskCount(c.body); $('#dCnt').textContent = t2.n ? t2.d + '/' + t2.n + ' tâches' : ''; };
+  B.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { const s = B.selectionStart; const before = B.value.slice(0, s); const line = before.split('\n').pop(); const m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(\[[ xX]\]\s+)?/); if (m && !e.ctrlKey) { e.preventDefault(); if (line.trim() === m[0].trim()) { B.setRangeText('', s - line.length, s, 'end'); } else { let bullet = m[2]; if (/\d/.test(bullet)) bullet = (parseInt(bullet, 10) + 1) + bullet.slice(-1); const ins = '\n' + m[1] + bullet + ' ' + (m[3] ? '[ ] ' : ''); B.setRangeText(ins, s, B.selectionEnd, 'end'); } B.dispatchEvent(new Event('input')); } } };
+  dBody.querySelectorAll('.dtabs [data-m]').forEach(b => b.onclick = () => setEditMode(b.dataset.m));
+  $('#dPrev').onclick = e => { const cb = e.target.closest('input[type=checkbox]'); if (cb) { e.preventDefault(); toggleTask(c, +cb.dataset.ln); refreshDetail(true); return; } const a = e.target.closest('a'); if (a) { e.preventDefault(); openHref(a.getAttribute('href')); } };
+  const tags = $('#dTags'); const applyTags = () => { const v = tags.value.split(',').map(t => oneLine(t).slice(0, 40)).filter(Boolean).slice(0, 20); if (JSON.stringify(v) === JSON.stringify(c.tags)) return; pushHistory(); c.tags = v; changed(); };
+  tags.onchange = applyTags; tags.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); applyTags(); } };
+  bindSwatches(dBody, [c.id]);
+  const hr = $('#dHref'); hr.onchange = () => { const v = hr.value.trim(); if (v && !HREF_RE.test(v)) { toast('Le lien doit commencer par https:// ou http://'); hr.value = c.href || ''; return; } pushHistory(); if (v) c.href = v; else { delete c.href; if (c.type === 'link') c.type = 'text'; } changed(); $('#dHrefGo').disabled = !v; };
+  $('#dHrefGo').onclick = () => openHref(c.href);
+  if ($('#dImgA')) $('#dImgA').onclick = () => pickImage(c.id);
+  if ($('#dImgR')) $('#dImgR').onclick = () => pickImage(c.id);
+  if ($('#dImgX')) $('#dImgX').onclick = () => { pushHistory(); delete c.asset; delete c.ratio; if (c.type === 'image') c.type = 'text'; changed(); refreshDetail(true); };
+  dBody.querySelectorAll('[data-go]').forEach(b => b.onclick = () => focusItem(b.dataset.go));
+  dBody.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { pushHistory(); board.edges = board.edges.filter(e => e.id !== b.dataset.rm); changed(); refreshDetail(true); });
+  $('#fCopy').onclick = () => { navigator.clipboard?.writeText(cardMarkdown(c)).then(() => toast('Carte copiée en Markdown.')).catch(() => toast('Copie impossible ici.')); };
+  $('#fDup').onclick = duplicateSel; $('#fDel').onclick = deleteSel;
+  if (focus === 'title') setTimeout(() => { T.focus(); T.select(); }, 30);
+  if (focus === 'body') { if (editMode === 'p') setEditMode('w'); setTimeout(() => { B.focus(); B.setSelectionRange(B.value.length, B.value.length); }, 30); }
+}
+function setEditMode(m) { editMode = m; LS.set('canopee:edit', m); const c = cardById([...sel][0]); if (!c) return; refreshDetail(true); if (m === 'w') setTimeout(() => $('#dBody') && $('#dBody').focus(), 20); }
+function detSec(s, focus) {
+  head('cadre', null);
+  const cs = cardsIn(s);
+  dBody.innerHTML = `<input class="dt" id="dTitle" placeholder="Nom du cadre" value="${esc(s.title)}">
+    <p class="note">${cs.length} carte${cs.length > 1 ? 's' : ''} dans ce cadre. Déplacer le cadre (par son nom) déplace aussi ses cartes.</p>
+    <div class="fl">Couleur</div>${swatches(s.color)}
+    <div class="fl">Organiser</div><div class="row"><button class="btn" id="sArr">Ranger les cartes</button><button class="btn" id="sArr1">En une colonne</button><button class="btn" id="sFit">Ajuster le cadre</button><button class="btn" id="sSel">Sélectionner les cartes</button></div>
+    <div class="fl">Ramure</div><div class="row"><button class="btn" id="sRam">Envoyer vers Ramure</button></div><p class="note">Le cadre devient le sujet central, ses cartes les branches (les flèches entre cartes forment la hiérarchie).</p>`;
+  dFoot.innerHTML = fBtn('fDel', 'Supprimer le cadre') + fBtn('fDelAll', 'Supprimer avec les cartes', 'dng');
+  const T = $('#dTitle'); T.oninput = () => { pushHistoryC('t' + s.id); s.title = T.value.slice(0, 120); changed(); };
+  T.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); stage.focus(); } };
+  bindSwatches(dBody, [s.id]);
+  $('#sArr').onclick = () => arrangeSection(s); $('#sArr1').onclick = () => arrangeSection(s, 1); $('#sFit').onclick = () => fitSection(s);
+  $('#sSel').onclick = () => setSel(cs.map(c => c.id));
+  $('#sRam').onclick = () => sendToRamure([s.id]);
+  $('#fDel').onclick = () => deleteIds([s.id]); $('#fDelAll').onclick = () => deleteIds([s.id, ...cs.map(c => c.id)]);
+  if (focus === 'title') setTimeout(() => { T.focus(); T.select(); }, 30);
+}
+function detEdge(e, focus) {
+  head('liaison', null);
+  const lbl = id => { const it = itemById(id); return it ? (kindOf(id) === 'sec' ? '▢ ' + (it.title || 'Cadre') : cardLabel(it)) : '?'; };
+  dBody.innerHTML = `<div class="fl" style="margin-top:6px">De → vers</div><ul class="lst"><li><span class="ar">●</span><button class="go" data-go="${e.from}">${esc(lbl(e.from))}</button></li><li><span class="ar">→</span><button class="go" data-go="${e.to}">${esc(lbl(e.to))}</button></li></ul>
+    <div class="fl">Libellé</div><input class="inp" id="eLbl" placeholder="ex. cause de, dépend de, voir aussi" value="${esc(e.label)}">
+    <div class="fl">Couleur</div>${swatches(e.color)}
+    <div class="fl">Flèche</div><div class="row"><select class="inp" id="eArr" style="width:auto"><option value="end">À l’arrivée</option><option value="both">Aux deux bouts</option><option value="none">Sans flèche</option></select><button class="btn" id="eRev">Inverser le sens</button></div>`;
+  dFoot.innerHTML = fBtn('fDel', 'Supprimer la liaison', 'dng');
+  const L = $('#eLbl'); L.oninput = () => { pushHistoryC('l' + e.id); e.label = oneLine(L.value).slice(0, 120); changed(); };
+  L.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); stage.focus(); } };
+  $('#eArr').value = e.arrow; $('#eArr').onchange = () => { pushHistory(); e.arrow = $('#eArr').value; changed(); };
+  $('#eRev').onclick = () => { pushHistory(); [e.from, e.to] = [e.to, e.from]; changed(); refreshDetail(true); };
+  bindSwatches(dBody, [e.id]);
+  dBody.querySelectorAll('[data-go]').forEach(b => b.onclick = () => focusItem(b.dataset.go));
+  $('#fDel').onclick = deleteSel;
+  if (focus === 'label') setTimeout(() => { L.focus(); L.select(); }, 30);
+}
+function detMulti(ids) {
+  head(ids.length + ' éléments', null);
+  const nc = ids.filter(i => kindOf(i) === 'card').length, ns = ids.filter(i => kindOf(i) === 'sec').length;
+  dBody.innerHTML = `<p class="note" style="margin-top:8px">${nc} carte${nc > 1 ? 's' : ''}, ${ns} cadre${ns > 1 ? 's' : ''} sélectionné${ids.length > 1 ? 's' : ''}.</p>
+    <div class="fl">Couleur</div>${swatches('')}
+    <div class="fl">Organiser</div><div class="row"><button class="btn" id="mWrap">Encadrer (Ctrl+G)</button><button class="btn" id="mGrid">Ranger en grille</button><button class="btn" id="mLeft">Aligner à gauche</button><button class="btn" id="mTop">Aligner en haut</button></div>
+    <div class="fl">Ramure et export</div><div class="row"><button class="btn" id="mRam">Envoyer vers Ramure</button><button class="btn" id="mMd">Copier en Markdown</button></div>`;
+  dFoot.innerHTML = fBtn('fDup', 'Dupliquer') + fBtn('fDel', 'Supprimer', 'dng');
+  bindSwatches(dBody, ids);
+  $('#mWrap').onclick = wrapSelection; $('#mGrid').onclick = () => alignSel('grid'); $('#mLeft').onclick = () => alignSel('left'); $('#mTop').onclick = () => alignSel('top');
+  $('#mRam').onclick = () => sendToRamure(ids);
+  $('#mMd').onclick = () => navigator.clipboard?.writeText(clipMarkdown(selectionWithContents())).then(() => toast('Copié en Markdown.')).catch(() => toast('Copie impossible ici.'));
+  $('#fDup').onclick = duplicateSel; $('#fDel').onclick = deleteSel;
+}
+function detBoard() {
+  head('tableau', board.created);
+  const e = libEntry(board.id) || {};
+  const tags = new Map(); board.cards.forEach(c => c.tags.forEach(t => tags.set(t, (tags.get(t) || 0) + 1)));
+  const tc = board.cards.reduce((a, c) => { const t = taskCount(c.body); return { n: a.n + t.n, d: a.d + t.d }; }, { n: 0, d: 0 });
+  dBody.innerHTML = `<input class="dt" id="dTitle" placeholder="Titre du tableau" value="${esc(board.title)}">
+    <p class="note">${plural(board.cards.length, 'carte')} · ${plural(board.sections.length, 'cadre')} · ${plural(board.edges.length, 'liaison')}${tc.n ? ` · ${tc.d}/${tc.n} tâches faites` : ''}</p>
+    <div class="fl">Dossier</div><select class="inp" id="bFold"><option value="">Sans dossier</option>${folders.map(f => `<option${e.folder === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>
+    <div class="fl">Couleur dans la barre latérale</div>${swatches(board.color, 'data-bcol')}
+    ${tags.size ? `<div class="fl">Étiquettes</div><div class="row">${[...tags].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([t, n]) => `<button class="tag" data-tag="${esc(t)}" style="cursor:pointer">${esc(t)} · ${n}</button>`).join('')}</div>` : ''}
+    <div class="fl">Fichier</div><p class="note" style="margin:0 0 8px">${e.fileName ? 'Lié au fichier <b>' + esc(e.fileName) + '</b>.' : 'Pas encore enregistré dans un fichier. Le brouillon reste sur cet appareil : enregistre dans OneDrive pour le retrouver ailleurs.'}</p>
+    <div class="row"><button class="btn" id="bSave">Enregistrer</button><button class="btn" id="bSaveAs">Enregistrer sous…</button></div>
+    <div class="fl">Exporter</div><div class="row"><button class="btn" id="bPng">Image PNG</button><button class="btn" id="bPdf">PDF</button><button class="btn" id="bMd">Markdown</button></div>
+    <div class="fl">Ramure</div><div class="row"><button class="btn" id="bRam">Envoyer le tableau vers Ramure</button></div><p class="note">Chaque cadre devient une branche, ses cartes des sous-sujets.</p>`;
+  dFoot.innerHTML = '';
+  const T = $('#dTitle'); T.oninput = () => { pushHistoryC('bt'); board.title = T.value.slice(0, 160) || 'Sans titre'; syncTitle(); changed(); };
+  $('#bFold').onchange = () => { e.folder = $('#bFold').value; saveLib(); renderLib(); };
+  dBody.querySelectorAll('[data-bcol]').forEach(b => b.onclick = () => { pushHistory(); board.color = b.dataset.bcol; changed(); saveDraft(); refreshDetail(true); });
+  dBody.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { const t = b.dataset.tag; setSel(board.cards.filter(c => c.tags.includes(t)).map(c => c.id)); toast(`${sel.size} carte(s) « ${t} » sélectionnée(s).`); });
+  $('#bSave').onclick = () => saveFile(false); $('#bSaveAs').onclick = () => saveFile(true);
+  $('#bPng').onclick = exportPNG; $('#bPdf').onclick = exportPDF; $('#bMd').onclick = exportMD; $('#bRam').onclick = () => sendToRamure([]);
+}
+function focusItem(id) { if (!itemById(id)) return; setSel([id]); if (kindOf(id) !== 'edge') ensureVisible(id); }
+det.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); document.activeElement.blur(); stage.focus(); } });
+$('#detClose').onclick = closeDetail;
+$('#detBtn').onclick = () => det.classList.contains('open') ? closeDetail() : openDetail();
+
+/* ============================================================
+   Bibliothèque (barre latérale)
+   ============================================================ */
+const libEl = $('#lib');
+function renderLib() {
+  const groups = new Map([['', []]]); folders.forEach(f => groups.set(f, []));
+  for (const b of lib) { const f = groups.has(b.folder || '') ? (b.folder || '') : ''; groups.get(f).push(b); }
+  const coll = new Intl.Collator('fr', { sensitivity: 'base', numeric: true });
+  let h = '';
+  for (const [f, items] of groups) {
+    items.sort((a, b) => coll.compare(a.title || '', b.title || ''));
+    if (f === '' && !items.length && folders.length) continue;
+    const name = f || (folders.length ? 'Sans dossier' : 'Tableaux');
+    h += `<div class="fold${closedFolders.has(f) ? ' closed' : ''}" data-fold="${esc(f)}"><div class="fh"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg><span class="fn">${esc(name)}</span><span>${items.length}</span>${f ? '<button class="ib" data-fmenu title="Options du dossier">⋯</button>' : ''}</div><div class="bl">`;
+    h += items.map(b => `<div class="bi${board && b.id === board.id ? ' on' : ''}" data-bid="${b.id}" draggable="true" title="${esc(b.title)}${b.fileName ? ' — ' + esc(b.fileName) : ''}"><span class="dot" style="${b.color && COLORS[b.color] ? 'background:' + COLORS[b.color].h : ''}"></span><span class="bt">${esc(b.title || 'Sans titre')}</span><span class="bc">${b.count || 0}</span><button class="ib" data-bmenu title="Options">⋯</button></div>`).join('');
+    h += '</div></div>';
+  }
+  libEl.innerHTML = h || '<p class="note" style="padding:8px">Aucun tableau.</p>';
+}
+libEl.addEventListener('click', e => {
+  const fm = e.target.closest('[data-fmenu]'); if (fm) { e.stopPropagation(); const f = fm.closest('[data-fold]').dataset.fold; const r = fm.getBoundingClientRect(); folderMenu(f, r.left, r.bottom); return; }
+  const bm = e.target.closest('[data-bmenu]'); if (bm) { e.stopPropagation(); const id = bm.closest('[data-bid]').dataset.bid; const r = bm.getBoundingClientRect(); boardMenu(id, r.left, r.bottom); return; }
+  const fh = e.target.closest('.fh'); if (fh) { const f = fh.parentElement.dataset.fold; closedFolders.has(f) ? closedFolders.delete(f) : closedFolders.add(f); saveLib(); renderLib(); return; }
+  const bi = e.target.closest('[data-bid]'); if (bi) { openBoard(bi.dataset.bid); if (SMALL()) toggleSide(false); }
+});
+libEl.addEventListener('contextmenu', e => { const bi = e.target.closest('[data-bid]'); if (bi) { e.preventDefault(); boardMenu(bi.dataset.bid, e.clientX, e.clientY); } });
+libEl.addEventListener('dragstart', e => { const bi = e.target.closest('[data-bid]'); if (bi) { e.dataTransfer.setData('application/x-canopee-board', bi.dataset.bid); e.dataTransfer.effectAllowed = 'move'; } });
+libEl.addEventListener('dragover', e => { const f = e.target.closest('[data-fold]'); if (f && e.dataTransfer.types.includes('application/x-canopee-board')) { e.preventDefault(); $$('.fold.dragover').forEach(x => x.classList.remove('dragover')); f.classList.add('dragover'); } });
+libEl.addEventListener('dragleave', e => { if (!libEl.contains(e.relatedTarget)) $$('.fold.dragover').forEach(x => x.classList.remove('dragover')); });
+libEl.addEventListener('drop', e => { const f = e.target.closest('[data-fold]'); $$('.fold.dragover').forEach(x => x.classList.remove('dragover')); const id = e.dataTransfer.getData('application/x-canopee-board'); if (f && id) { e.preventDefault(); const b = libEntry(id); if (b) { b.folder = f.dataset.fold; saveLib(); renderLib(); refreshDetail(true); } } });
+function boardMenu(id, x, y) {
+  const b = libEntry(id); if (!b) return;
+  openMenuAt($('#ctx'), x, y, [
+    ['Ouvrir', () => openBoard(id)],
+    ['Renommer…', () => renameBoard(id)],
+    ['mh', 'Déplacer vers'],
+    ...['', ...folders].filter(f => f !== (b.folder || '')).map(f => ['  ' + (f || 'Sans dossier'), () => { b.folder = f; saveLib(); renderLib(); refreshDetail(true); }]),
+    ['  Nouveau dossier…', async () => { const n = await askFolderName(); if (n) { b.folder = n; saveLib(); renderLib(); } }],
+    ['hr'],
+    ['Dupliquer', () => duplicateBoard(id)],
+    ['Exporter le fichier .canopee', async () => { const d = id === board.id ? board : await idbGet('b', id); if (d) downloadBlob(new Blob([JSON.stringify(fileData(d))], { type: 'application/json' }), safeName(d.title) + '.canopee'); }],
+    ['hr'],
+    ['Retirer de cet appareil…', () => removeBoard(id), 'dng']
+  ]);
+}
+function folderMenu(f, x, y) {
+  openMenuAt($('#ctx'), x, y, [
+    ['Renommer le dossier…', async () => { const n = await ask('Renommer le dossier', f); const v = n && oneLine(n).slice(0, 60); if (!v || v === f) return; if (folders.includes(v)) { toast('Ce dossier existe déjà.'); return; } folders = folders.map(x => x === f ? v : x); lib.forEach(b => { if (b.folder === f) b.folder = v; }); if (closedFolders.delete(f)) closedFolders.add(v); saveLib(); renderLib(); }],
+    ['Nouveau tableau dans ce dossier', () => showTemplates(f)],
+    ['hr'],
+    ['Supprimer le dossier (les tableaux restent)', () => { folders = folders.filter(x => x !== f); lib.forEach(b => { if (b.folder === f) b.folder = ''; }); saveLib(); renderLib(); }, 'dng']
+  ]);
+}
+async function askFolderName() { const n = await ask('Nouveau dossier', ''); const v = n && oneLine(n).slice(0, 60); if (!v) return null; if (!folders.includes(v)) folders.push(v); saveLib(); renderLib(); return v; }
+$('#addFolder').onclick = () => askFolderName();
+async function renameBoard(id) {
+  const b = libEntry(id); const n = await ask('Renommer le tableau', b.title); const v = n && n.trim().slice(0, 160); if (!v) return;
+  if (id === board.id) { pushHistory(); board.title = v; syncTitle(); changed(); saveDraft(); }
+  else { b.title = v; saveLib(); renderLib(); idbGet('b', id).then(d => { if (d) { d.title = v; idbPut('b', id, d); } }); }
+}
+async function duplicateBoard(id) {
+  if (board && id === board.id) await saveDraft();
+  const d = await idbGet('b', id); if (!d) return;
+  const n = normalizeBoard({ ...deepCopy(d), id: uid('b'), title: d.title + ' (copie)', created: Date.now(), updated: Date.now() });
+  await idbPut('b', n.id, n); lib.push({ id: n.id, title: n.title, folder: (libEntry(id) || {}).folder || '', updated: n.updated, count: n.cards.length, color: n.color });
+  saveLib(); openBoard(n.id);
+}
+function removeBoard(id) {
+  const b = libEntry(id);
+  showModal('Retirer le tableau', `<p>Retirer « ${esc(b.title)} » de cet appareil ? ${b.fileName ? 'Le fichier <b>' + esc(b.fileName) + '</b> reste intact dans OneDrive.' : '<b>Ce tableau n’a jamais été enregistré dans un fichier : il sera perdu.</b>'}</p><div class="row" style="margin-top:12px"><button class="btn dng" id="rmOk">Retirer</button><button class="btn" id="rmNo">Annuler</button></div>`, m => {
+    m.querySelector('#rmNo').onclick = closeModal;
+    m.querySelector('#rmOk').onclick = async () => {
+      closeModal(); lib = lib.filter(x => x.id !== id); saveLib(); await idbDel('b', id); await idbDel('h', id);
+      if (board && board.id === id) { board = null; const next = lib[0]; if (next) await openBoard(next.id); else await createBoard('blank'); }
+      renderLib();
+    };
+  });
+}
+function toggleSide(force) {
+  const app = $('#app'); const hide = force === undefined ? !app.classList.contains('noside') : !force;
+  app.classList.toggle('noside', hide); if (!SMALL()) LS.set('canopee:side', hide ? '0' : '1');
+  setTimeout(() => { renderMini(); }, 220);
+}
+$('#sideClose').onclick = () => toggleSide(false); $('#sideOpen').onclick = () => toggleSide(); $('#scrim').onclick = () => toggleSide(false);
+$('#sNew').onclick = () => showTemplates(); $('#sFind').onclick = () => openPalette(); $('#findBtn').onclick = () => openPalette();
+$('#themeBtn').onclick = toggleTheme;
+
+/* ---------- Ouvrir / créer un tableau ---------- */
+async function openBoard(id, opts = {}) {
+  if (board && board.id === id && !opts.force) return;
+  if (board) await saveDraft();
+  const d = await idbGet('b', id);
+  if (!d) { toast('Tableau introuvable sur cet appareil.'); lib = lib.filter(x => x.id !== id); saveLib(); renderLib(); return; }
+  setBoard(normalizeBoard(d));
+}
+function setBoard(b) {
+  board = b; gcAssets(board);
+  undo = []; redo = []; lastHK = null; updateUndo(); sel = new Set(); tmpEdge = null; detKey = '';
+  fileHandle = null; idbGet('h', board.id).then(h => { if (board && h) fileHandle = h; });
+  LS.set('canopee:last', board.id);
+  syncTitle(); cardsEl.innerHTML = ''; secsEl.innerHTML = ''; render();
+  if (board.view) { view = { ...board.view }; applyView(); } else fit();
+  if (!libEntry(board.id)) { lib.push({ id: board.id, title: board.title, folder: '', updated: board.updated, count: board.cards.length, color: board.color }); saveLib(); }
+  renderLib(); refreshDetail(true);
+  stage.focus({ preventScroll: true });
+}
+function gcAssets(b) { const used = new Set(b.cards.map(c => c.asset).filter(Boolean)); for (const k of Object.keys(b.assets)) if (!used.has(k)) delete b.assets[k]; }
+async function createBoard(key, folder = '') {
+  const t = TEMPLATES[key] || TEMPLATES.blank; const o = t.build();
+  const b = normalizeBoard({ id: uid('b'), title: o.title, cards: o.cards || [], sections: o.sections || [], edges: [] });
+  if (board) await saveDraft();
+  lib.push({ id: b.id, title: b.title, folder: folder || '', updated: b.updated, count: b.cards.length });
+  saveLib(); await idbPut('b', b.id, b);
+  setBoard(b); if (b.sections.length) fit(); else { view = { x: stageRect().width / 2, y: stageRect().height / 2 - 40, k: 1 }; applyView(); }
+  setTimeout(() => { const t = $('#btitle'); t.focus(); t.select(); }, 60);
+}
+function showTemplates(folder) {
+  showModal('Nouveau tableau', `<div class="tpls">${Object.entries(TEMPLATES).map(([k, t]) => `<button class="tpl" data-t="${k}"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></button>`).join('')}</div><p class="note" style="margin-top:12px">${folder ? 'Il sera rangé dans le dossier « ' + esc(folder) + ' ».' : 'Tu pourras le ranger dans un dossier depuis la barre latérale.'}</p>`, m => {
+    m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { closeModal(); createBoard(b.dataset.t, typeof folder === 'string' ? folder : ''); });
+  });
+}
+$('#btitle').addEventListener('input', () => { pushHistoryC('bt'); board.title = $('#btitle').value.slice(0, 160) || 'Sans titre'; fitTitle(); document.title = board.title + ' — Canopée'; changed(); });
+$('#btitle').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); stage.focus(); } });
+$('#btitle').addEventListener('blur', () => { if (!board.title.trim()) board.title = 'Sans titre'; syncTitle(); saveDraft(); });
+
+/* ============================================================
+   Fichiers (.canopee dans OneDrive)
+   ============================================================ */
+function fileData(d) {
+  const used = new Set(d.cards.map(c => c.asset).filter(Boolean)); const assets = {};
+  for (const k of used) if (d.assets[k]) assets[k] = d.assets[k];
+  return { app: 'canopee', version: 1, id: d.id, title: d.title, color: d.color || '', created: d.created, updated: d.updated, cards: d.cards, sections: d.sections, edges: d.edges, assets, view: d === board ? { ...view } : d.view };
+}
+function downloadBlob(blob, name) {
+  if (IN_FRAME) { toast('Aperçu : les téléchargements sont bloqués ici. Utilise la version installée.'); return false; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return true;
+}
+async function ensurePerm(h) { try { if ((await h.queryPermission({ mode: 'readwrite' })) === 'granted') return true; return (await h.requestPermission({ mode: 'readwrite' })) === 'granted'; } catch (e) { return false; } }
+async function writeHandle(h, text) { const w = await h.createWritable(); await w.write(text); await w.close(); }
+async function saveFile(as) {
+  if (!board) return;
+  if (IN_FRAME) { toast('Aperçu : l’enregistrement de fichiers est bloqué ici. Utilise la version installée.'); return; }
+  await saveDraft();
+  const json = JSON.stringify(fileData(board)); const e = libEntry(board.id);
+  const done = (name, dl) => { e.fileName = name; e.fd = false; saveLib(); updateMeta(); renderLib(); refreshDetail(); toast(dl ? `Fichier téléchargé : ${name}. Range-le dans ton OneDrive.` : `Enregistré : ${name}`, dl ? 4500 : 2200); };
+  try {
+    if (!as && fileHandle && await ensurePerm(fileHandle)) { await writeHandle(fileHandle, json); done(fileHandle.name); return; }
+    if (window.showSaveFilePicker) {
+      const h = await window.showSaveFilePicker({ suggestedName: e.fileName || safeName(board.title) + '.canopee', types: [{ description: 'Tableau Canopée', accept: { 'application/json': ['.canopee'] } }] });
+      await writeHandle(h, json); fileHandle = h; await idbPut('h', board.id, h); done(h.name); return;
+    }
+    const name = (e.fileName && !as) ? e.fileName : safeName(board.title) + '.canopee';
+    if (downloadBlob(new Blob([json], { type: 'application/json' }), name)) done(name, true);
+  } catch (err) { if (err && err.name !== 'AbortError') toast('Enregistrement impossible : ' + (err.message || err)); }
+}
+async function openFile() {
+  if (IN_FRAME) { $('#fileIn').value = ''; $('#fileIn').click(); return; }
+  if (window.showOpenFilePicker) {
+    try { const [h] = await window.showOpenFilePicker({ types: [{ description: 'Canopée ou Ramure', accept: { 'application/json': ['.canopee', '.ramure', '.json'] } }] }); await openFromFile(await h.getFile(), h); }
+    catch (err) { if (err && err.name !== 'AbortError') toast('Ouverture impossible : ' + (err.message || err)); }
+    return;
+  }
+  $('#fileIn').value = ''; $('#fileIn').click();
+}
+$('#fileIn').addEventListener('change', e => { const f = e.target.files[0]; if (f) openFromFile(f, null); });
+async function openFromFile(file, handle) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { toast('Ce fichier n’est pas un tableau Canopée ni une carte Ramure lisible.'); return; }
+  if (data && (data.app === 'ramure' || Array.isArray(data.sheets) || data.root)) { await addConverted(fromRamure(data), file.name.replace(/\.[^.]+$/, '')); toast('Carte Ramure convertie en tableau.'); return; }
+  if (!data || (data.app !== 'canopee' && !Array.isArray(data.cards))) { toast('Ce fichier n’est pas un tableau Canopée.'); return; }
+  const b = normalizeBoard(data); let ex = libEntry(b.id);
+  if (ex && ex.fd && !(ex.fileName === file.name)) { b.id = uid('b'); b.title += ' (fichier)'; ex = null; toast('La version de cet appareil a des modifications non enregistrées : le fichier est ouvert à part.', 4500); }
+  else if (ex && ex.fd) { toast('Version du fichier chargée. Les modifications non enregistrées de cet appareil ont été remplacées.', 4500); }
+  if (board) await saveDraft();
+  await idbPut('b', b.id, b);
+  if (!ex) { ex = { id: b.id, folder: '' }; lib.push(ex); }
+  Object.assign(ex, { title: b.title, color: b.color, updated: b.updated, count: b.cards.length, fileName: file.name, fd: false }); saveLib();
+  if (handle) await idbPut('h', b.id, handle);
+  board = null; setBoard(b); fileHandle = handle || null; updateMeta();
+  toast('Ouvert : ' + file.name);
+}
+if ('launchQueue' in window) { try { window.launchQueue.setConsumer(async p => { if (p.files && p.files.length) { const h = p.files[0]; await openFromFile(await h.getFile(), h); } }); } catch (e) {} }
+
+/* ============================================================
+   Passerelle Ramure ⇄ Canopée
+   ============================================================ */
+function fromRamure(data) {
+  const sheets = Array.isArray(data.sheets) && data.sheets.length ? data.sheets : [data];
+  const assets = {}, cards = [], sections = [], edges = [], groups = [];
+  const mk = (n, sub) => {
+    const lines = []; if (n.note) lines.push(String(n.note).trim(), '');
+    const walk = (k, d) => { for (const ch of (k.children || [])) { lines.push('  '.repeat(d) + '- ' + (oneLine(ch.text) || '…') + (ch.note ? ' — ' + oneLine(ch.note).slice(0, 200) : '')); walk(ch, d + 1); } };
+    if (sub !== false) walk(n, 0);
+    const c = { id: uid('c'), type: 'text', x: 0, y: 0, w: 260, title: oneLine(n.text).slice(0, 300), body: lines.join('\n').trim(), tags: Array.isArray(n.labels) ? n.labels.slice(0, 20) : [], color: nearestColor(n.color || (n.style && n.style.fill)) };
+    if (typeof n.href === 'string' && HREF_RE.test(n.href)) c.href = n.href;
+    if (n.image && typeof n.image.src === 'string' && IMG_RE.test(n.image.src)) { const a = uid('a'); assets[a] = n.image.src; c.asset = a; c.ratio = +n.image.ratio || 0.75; c.type = 'image'; }
+    return c;
+  };
+  for (const sh of sheets) {
+    const root = sh.root || { text: sh.title || 'Carte', children: [] };
+    const s = { id: uid('s'), x: 0, y: 0, w: 400, h: 300, title: oneLine(root.text || sh.title || 'Carte').slice(0, 120), color: '' };
+    const gcards = []; const owner = new Map();
+    if (root.note) { const c = mk({ text: 'Note', note: root.note }, false); gcards.push(c); }
+    for (const ch of (root.children || [])) { const c = mk(ch); gcards.push(c); const mark = n => { owner.set(n.id, c.id); (n.children || []).forEach(mark); }; mark(ch); }
+    for (const f of (sh.floats || [])) { const c = mk(f); gcards.push(c); const mark = n => { owner.set(n.id, c.id); (n.children || []).forEach(mark); }; mark(f); }
+    if (!gcards.length) gcards.push(mk({ text: root.text || 'Carte' }, false));
+    for (const r of (sh.rels || [])) { const a = owner.get(r.from), b = owner.get(r.to); if (a && b && a !== b && !edges.some(e => e.from === a && e.to === b)) edges.push({ id: uid('e'), from: a, to: b, label: oneLine(r.label || '').slice(0, 120), color: '', arrow: 'end' }); }
+    sections.push(s); cards.push(...gcards); groups.push({ sec: s.id, cards: gcards.map(c => c.id) });
+  }
+  const b = normalizeBoard({ id: uid('b'), title: String(data.title || sections[0].title || 'Depuis Ramure').slice(0, 160), cards, sections, edges, assets });
+  return { board: b, groups };
+}
+async function addConverted(conv, fallbackTitle) {
+  const b = conv.board; if (!b.title && fallbackTitle) b.title = fallbackTitle;
+  if (board) await saveDraft();
+  lib.push({ id: b.id, title: b.title, folder: '', updated: b.updated, count: b.cards.length }); saveLib();
+  board = null; setBoard(b);
+  // mise en page : chaque cadre range ses cartes, les cadres côte à côte
+  let x = 0;
+  for (const g of conv.groups) {
+    const s = secById(g.sec); const cs = g.cards.map(cardById).filter(Boolean);
+    cs.forEach((c, i) => { c.x = i; c.y = i; });
+    arrange(cs, x + 20, 28, clamp(Math.ceil(Math.sqrt(cs.length)), 1, 3));
+    const bb = bounds(cs.map(c => c.id)); s.x = x; s.y = 0; s.w = bb.w + 40; s.h = bb.h + 48; x += s.w + 80;
+  }
+  render(); fit(); await saveDraft();
+}
+function ramureFrom(ids) {
+  ids = (ids || []).filter(id => kindOf(id) !== 'edge');
+  const used = new Set(); const rels = [];
+  const node = c => {
+    const n = { id: c.id, text: oneLine(c.title) || cardLabel(c), children: [] };
+    if (c.body && c.body.trim()) n.note = c.body.trim();
+    if (c.tags.length) n.labels = c.tags.slice(0, 12);
+    if (c.href) n.href = c.href;
+    if (c.color) n.color = COLORS[c.color].h;
+    if (c.asset && board.assets[c.asset]) n.image = { src: board.assets[c.asset], w: 200, ratio: c.ratio || 0.75 };
+    return n;
+  };
+  const pos = (a, b) => (a.y - b.y) || (a.x - b.x);
+  const tree = cs => {
+    const S = new Set(cs.map(c => c.id)); const parent = new Map(); const kids = new Map(cs.map(c => [c.id, []]));
+    const isAnc = (a, b) => { let x = a; for (let i = 0; i < 9999 && x; i++) { if (x === b) return true; x = parent.get(x); } return false; };
+    const es = board.edges.filter(e => S.has(e.from) && S.has(e.to)).sort((e1, e2) => pos(cardById(e1.from), cardById(e2.from)));
+    for (const e of es) { if (!parent.has(e.to) && !isAnc(e.from, e.to)) { parent.set(e.to, e.from); kids.get(e.from).push(e.to); used.add(e.id); } }
+    const build = c => { const n = node(c); n.children = kids.get(c.id).map(cardById).sort(pos).map(build); return n; };
+    return cs.filter(c => !parent.has(c.id)).sort(pos).map(build);
+  };
+  let title, rootText, children = [], color;
+  const smallest = c => sectionOf(c);
+  if (ids.length === 1 && kindOf(ids[0]) === 'sec') {
+    const s = secById(ids[0]); title = s.title || 'Cadre'; rootText = title; children = tree(cardsIn(s)); color = s.color;
+  } else if (ids.length) {
+    const set = new Set(); for (const id of ids) { if (kindOf(id) === 'card') set.add(id); else cardsIn(secById(id)).forEach(c => set.add(c.id)); }
+    title = board.title; rootText = board.title; children = tree([...set].map(cardById));
+  } else {
+    title = board.title; rootText = board.title;
+    const bySec = new Map(); const loose = [];
+    for (const c of board.cards) { const s = smallest(c); if (s) { if (!bySec.has(s.id)) bySec.set(s.id, []); bySec.get(s.id).push(c); } else loose.push(c); }
+    for (const s of [...board.sections].sort(pos)) { const cs = bySec.get(s.id) || []; const n = { id: s.id, text: s.title || 'Cadre', children: tree(cs) }; if (s.color) n.color = COLORS[s.color].h; children.push(n); }
+    children.push(...tree(loose));
+  }
+  const all = new Set(); const mark = n => { all.add(n.id); n.children.forEach(mark); }; children.forEach(mark);
+  for (const e of board.edges) if (!used.has(e.id) && all.has(e.from) && all.has(e.to)) rels.push({ id: e.id, from: e.from, to: e.to, label: e.label || undefined });
+  const root = { id: uid('r'), text: rootText, children };
+  if (color) root.color = COLORS[color].h;
+  return { app: 'ramure', version: 3, id: uid('d'), title, sheets: [{ id: uid('s'), title: 'Feuille 1', structure: 'mindmap', root, floats: [], rels }], active: 0 };
+}
+function sendToRamure(ids) {
+  const book = ramureFrom(ids); const n = (function cnt(a) { return a.reduce((s, x) => s + 1 + cnt(x.children), 0); })(book.sheets[0].root.children);
+  showModal('Envoyer vers Ramure', `<p>« <b>${esc(book.title)}</b> » devient une carte mentale de ${n} sujet${n > 1 ? 's' : ''}. Les flèches entre cartes deviennent la hiérarchie, les textes deviennent des notes.</p>
+    <div class="row" style="margin-top:12px">${IN_FRAME ? '' : '<button class="btn pri" id="rOpen">Ouvrir dans Ramure</button>'}<button class="btn" id="rFile">Enregistrer en fichier .ramure</button><button class="btn" id="rNo">Annuler</button></div>
+    ${IN_FRAME ? '<p class="note">Dans l’aperçu, la passerelle directe est indisponible : utilise la version installée.</p>' : '<p class="note">Ramure s’ouvre dans un nouvel onglet, avec la carte dans un nouvel onglet de fichier. Rien ne quitte cet appareil.</p>'}`, m => {
+    m.querySelector('#rNo').onclick = closeModal;
+    m.querySelector('#rFile').onclick = () => { closeModal(); downloadBlob(new Blob([JSON.stringify(book)], { type: 'application/json' }), safeName(book.title) + '.ramure'); };
+    const o = m.querySelector('#rOpen'); if (o) o.onclick = async () => {
+      closeModal();
+      try { await pxPut('ramure', { book, at: Date.now() }); const here = await wakePeer('ramure'); if (here) toast('Carte ouverte dans la fenêtre Ramure déjà ouverte.', 3500); else { window.open('../', '_blank'); toast('Carte envoyée à Ramure.'); } }
+      catch (e) { toast('Passerelle indisponible : ' + (e.message || e)); }
+    };
+  });
+}
+/* Si l'autre application est déjà ouverte, elle prend la carte (pas de nouvelle fenêtre). */
+function wakePeer(target) {
+  return new Promise(res => {
+    let bc; try { bc = new BroadcastChannel('passerelle'); } catch (e) { res(false); return; }
+    const t = setTimeout(() => { bc.close(); res(false); }, 450);
+    bc.onmessage = e => { if (e.data && e.data.ack === target) { clearTimeout(t); bc.close(); res(true); } };
+    bc.postMessage({ wake: target });
+  });
+}
+try { const bcIn = new BroadcastChannel('passerelle'); bcIn.onmessage = e => { if (e.data && e.data.wake === 'canopee' && !IN_FRAME) { bcIn.postMessage({ ack: 'canopee' }); checkInbox(); } }; } catch (e) {}
+async function checkInbox() {
+  if (IN_FRAME) return;
+  let r; try { r = await pxTake('canopee'); } catch (e) { return; }
+  if (!r || !r.book || Date.now() - (r.at || 0) > 30 * 60000) return;
+  await addConverted(fromRamure(r.book)); toast('Carte reçue de Ramure.');
+}
+window.addEventListener('focus', () => checkInbox());
+
+/* ============================================================
+   Exports : PNG, PDF, Markdown
+   ============================================================ */
+function rrect(x, X, Y, W, Hh, r) { r = Math.min(r, W / 2, Hh / 2); x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + Hh, r); x.arcTo(X + W, Y + Hh, X, Y + Hh, r); x.arcTo(X, Y + Hh, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
+function wrap(x, text, maxW) {
+  const out = [];
+  for (const para of String(text).split('\n')) {
+    const words = para.split(/(\s+)/); let line = '';
+    for (const w of words) {
+      const t = line + w;
+      if (x.measureText(t).width <= maxW || !line.trim()) { if (x.measureText(t).width > maxW && !line.trim()) { let s = ''; for (const ch of t) { if (x.measureText(s + ch).width > maxW) { out.push(s); s = ''; } s += ch; } line = s; } else line = t; }
+      else { out.push(line.trimEnd()); line = w.trimStart(); }
+    }
+    out.push(line.trimEnd());
+  }
+  return out;
+}
+async function renderToCanvas() {
+  const b0 = bounds(); if (!b0) { toast('Tableau vide : rien à exporter.'); return null; }
+  const m = 40; const b = { x: b0.x - m, y: b0.y - m - 10, w: b0.w + m * 2, h: b0.h + m * 2 + 10 };
+  let s = Math.min(2, 8000 / Math.max(b.w, b.h)); if (b.w * b.h * s * s > 50e6) s = Math.sqrt(50e6 / (b.w * b.h));
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(b.w * s); cv.height = Math.ceil(b.h * s);
+  const x = cv.getContext('2d'); x.scale(s, s); x.translate(-b.x, -b.y);
+  const C = { bg: cssv('--canvas'), card: cssv('--card'), cl: cssv('--card-line'), text: cssv('--text'), muted: cssv('--muted'), l2: cssv('--line-2'), panel: cssv('--panel'), edge: cssv('--edge'), soft: cssv('--soft'), acc: cssv('--accent') };
+  const mix = (parseFloat(cssv('--mix')) || 20) / 100; const F = cssv('--font') || 'sans-serif';
+  x.fillStyle = C.bg; x.fillRect(b.x, b.y, b.w, b.h);
+  for (const sc of [...board.sections].sort((a, c) => c.w * c.h - a.w * a.h)) {
+    const col = sc.color ? COLORS[sc.color].h : null;
+    if (col) { x.fillStyle = col; x.globalAlpha = 0.07; rrect(x, sc.x, sc.y, sc.w, sc.h, 14); x.fill(); x.globalAlpha = 1; }
+    x.setLineDash([6, 5]); x.lineWidth = 1.5; x.strokeStyle = col ? mixHex(col, C.bg.startsWith('#') ? C.bg : '#1B1E21', 0.55) : C.l2; rrect(x, sc.x, sc.y, sc.w, sc.h, 14); x.stroke(); x.setLineDash([]);
+    x.font = `700 12px ${F}`; const t = (sc.title || 'Cadre').toUpperCase(); const tw = Math.min(x.measureText(t).width + 16, sc.w - 20);
+    x.fillStyle = C.bg; rrect(x, sc.x + 10, sc.y - 13, tw, 22, 7); x.fill(); x.fillStyle = col || C.muted; x.save(); x.beginPath(); x.rect(sc.x + 10, sc.y - 14, tw, 24); x.clip(); x.fillText(t, sc.x + 18, sc.y + 2); x.restore();
+  }
+  for (const e of board.edges) {
+    const a = rectOf(e.from), c = rectOf(e.to); if (!a || !c) continue; const g = edgeGeom(a, c); const col = e.color ? COLORS[e.color].h : C.edge;
+    x.strokeStyle = col; x.fillStyle = col; x.lineWidth = 1.6; x.beginPath(); x.moveTo(g.p0.x, g.p0.y); x.bezierCurveTo(g.p1.x, g.p1.y, g.p2.x, g.p2.y, g.p3.x, g.p3.y); x.stroke();
+    const head = (tip, from) => { const an = Math.atan2(tip.y - from.y, tip.x - from.x); x.beginPath(); x.moveTo(tip.x, tip.y); x.lineTo(tip.x + Math.cos(an + Math.PI - 0.42) * 9, tip.y + Math.sin(an + Math.PI - 0.42) * 9); x.lineTo(tip.x + Math.cos(an + Math.PI + 0.42) * 9, tip.y + Math.sin(an + Math.PI + 0.42) * 9); x.closePath(); x.fill(); };
+    if (e.arrow !== 'none') head(g.p3, g.p2); if (e.arrow === 'both') head(g.p0, g.p1);
+    if (e.label) { const mm = bez(g, 0.5); x.font = `12px ${F}`; const w = Math.min(260, x.measureText(e.label).width + 14); x.fillStyle = C.panel; x.strokeStyle = C.l2; x.lineWidth = 1; rrect(x, mm.x - w / 2, mm.y - 11, w, 22, 7); x.fill(); x.stroke(); x.fillStyle = C.text; x.textAlign = 'center'; x.fillText(e.label, mm.x, mm.y + 4, w - 10); x.textAlign = 'left'; }
+  }
+  const imgs = {}; for (const c of board.cards) if (c.asset && board.assets[c.asset] && !imgs[c.asset]) { const im = new Image(); im.src = board.assets[c.asset]; try { await im.decode(); imgs[c.asset] = im; } catch (e) {} }
+  for (const c of board.cards) {
+    const r = rectOf(c.id); const col = c.color ? COLORS[c.color].h : null;
+    const bgc = col && C.card.startsWith('#') ? mixHex(col, C.card, mix) : C.card;
+    x.save(); x.shadowColor = 'rgba(0,0,0,.18)'; x.shadowBlur = 4; x.shadowOffsetY = 1; x.fillStyle = bgc; rrect(x, r.x, r.y, r.w, r.h, 12); x.fill(); x.restore();
+    x.strokeStyle = col && C.cl.startsWith('#') ? mixHex(col, C.cl, 0.4) : C.cl; x.lineWidth = 1; rrect(x, r.x, r.y, r.w, r.h, 12); x.stroke();
+    x.save(); rrect(x, r.x, r.y, r.w, r.h, 12); x.clip();
+    let y = r.y;
+    if (c.asset && imgs[c.asset]) { const ih = r.w * (c.ratio || 0.75); x.drawImage(imgs[c.asset], r.x, r.y, r.w, ih); y += ih; }
+    const pad = 12, maxW = r.w - pad * 2; y += 10;
+    const tagsH = c.tags.length ? 24 : 0; const bottom = r.y + r.h - 10 - tagsH;
+    if (c.title || !c.asset || c.body) { x.font = `650 14px ${F}`; x.fillStyle = c.title ? C.text : C.muted; for (const l of wrap(x, c.title || 'Sans titre', maxW)) { y += 17; if (y > bottom) break; x.fillText(l, r.x + pad, y); } y += 6; }
+    if (c.body) { x.font = `12.5px ${F}`; x.fillStyle = C.muted; for (const l of wrap(x, plainLines(c.body).join('\n'), maxW)) { y += 18; if (y > bottom - 2) break; x.fillText(l, r.x + pad, y - 3); } }
+    if (c.href) { x.font = `12px ${F}`; x.fillStyle = C.muted; const ly = Math.min(bottom - 4, y + 22); if (ly > y) x.fillText('🔗 ' + hostOf(c.href), r.x + pad, ly); }
+    if (c.tags.length) { x.font = `11px ${F}`; let tx = r.x + pad; const ty = r.y + r.h - 28; for (const t of c.tags) { const w = x.measureText(t).width + 14; if (tx + w > r.x + r.w - pad) break; x.fillStyle = C.soft; rrect(x, tx, ty, w, 18, 6); x.fill(); x.fillStyle = C.muted; x.fillText(t, tx + 7, ty + 13); tx += w + 4; } }
+    x.restore();
+  }
+  return cv;
+}
+function toBlob(c, type, q) { return new Promise(res => c.toBlob(res, type, q)); }
+async function exportPNG() { const c = await renderToCanvas(); if (c) downloadBlob(await toBlob(c, 'image/png'), safeName(board.title) + '.png'); }
+function buildPdf(jpg, iw, ih) {
+  const land = iw >= ih; const PW = land ? 842 : 595, PH = land ? 595 : 842, m = 28;
+  const s = Math.min((PW - 2 * m) / iw, (PH - 2 * m) / ih), dw = iw * s, dh = ih * s, ox = (PW - dw) / 2, oy = (PH - dh) / 2;
+  const enc = new TextEncoder(); const parts = [], offs = []; let len = 0;
+  const push = v => { const b = typeof v === 'string' ? enc.encode(v) : v; parts.push(b); len += b.length; };
+  const obj = (i, body) => { offs[i] = len; push(`${i} 0 obj\n${body}\nendobj\n`); };
+  push('%PDF-1.4\n%âãÏÓ\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>'); obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+  offs[4] = len;
+  push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); push(jpg); push('\nendstream\nendobj\n');
+  const content = `q ${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${ox.toFixed(2)} ${oy.toFixed(2)} cm /Im0 Do Q`;
+  obj(5, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  const xref = len; let xr = 'xref\n0 6\n0000000000 65535 f \n';
+  for (let i = 1; i <= 5; i++) xr += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  push(xr); push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+async function exportPDF() { const c = await renderToCanvas(); if (!c) return; const jpg = new Uint8Array(await (await toBlob(c, 'image/jpeg', 0.92)).arrayBuffer()); downloadBlob(buildPdf(jpg, c.width, c.height), safeName(board.title) + '.pdf'); }
+function boardMarkdown() {
+  const pos = (a, b) => (a.y - b.y) || (a.x - b.x);
+  let s = '# ' + board.title + '\n\n'; const bySec = new Map(); const loose = [];
+  for (const c of board.cards) { const sc = sectionOf(c); if (sc) { if (!bySec.has(sc.id)) bySec.set(sc.id, []); bySec.get(sc.id).push(c); } else loose.push(c); }
+  for (const sc of [...board.sections].sort(pos)) { s += '## ' + (sc.title || 'Cadre') + '\n\n'; for (const c of (bySec.get(sc.id) || []).sort(pos)) s += cardMarkdown(c) + '\n\n'; }
+  if (loose.length) { s += (board.sections.length ? '## Autres cartes\n\n' : ''); for (const c of loose.sort(pos)) s += cardMarkdown(c) + '\n\n'; }
+  if (board.edges.length) { const lb = id => { const it = itemById(id); return kindOf(id) === 'sec' ? (it.title || 'Cadre') : cardLabel(it); }; s += '## Liaisons\n\n' + board.edges.map(e => `- ${lb(e.from)} → ${lb(e.to)}${e.label ? ' (' + e.label + ')' : ''}`).join('\n') + '\n'; }
+  return s.trim() + '\n';
+}
+function exportMD() { downloadBlob(new Blob([boardMarkdown()], { type: 'text/markdown' }), safeName(board.title) + '.md'); }
+
+/* ============================================================
+   Palette de recherche (Ctrl+K)
+   ============================================================ */
+let palItems = [], palIdx = 0, palBoards = null;
+const CMDS = () => [
+  ['Nouvelle carte', 'N', () => newCardHere()], ['Nouveau cadre', 'S', wrapSelection], ['Nouveau tableau…', '', () => showTemplates()],
+  ['Ajouter une image ou une photo', 'I', () => pickImage()], ['Ajouter un lien', 'L', askLink],
+  ['Ouvrir un fichier…', 'Ctrl+O', openFile], ['Enregistrer', 'Ctrl+S', () => saveFile(false)], ['Enregistrer sous…', 'Ctrl+Maj+S', () => saveFile(true)],
+  ['Exporter en PNG', '', exportPNG], ['Exporter en PDF', '', exportPDF], ['Exporter en Markdown', '', exportMD],
+  ['Envoyer vers Ramure', '', () => sendToRamure([...sel])], ['Tout afficher', 'Maj+1', fit], ['Thème clair / sombre', '', toggleTheme],
+  ['Minicarte', 'M', toggleMini], ['Barre latérale', 'Ctrl+\\', () => toggleSide()], ['Raccourcis et aide', '?', showHelp]
+];
+async function openPalette() {
+  closeMenus(); $('#pal').classList.add('open'); const inp = $('#palIn'); inp.value = ''; setTimeout(() => inp.focus(), 10);
+  palBoards = null; runPal();
+  const all = await idbAll('b'); palBoards = all.filter(b => b && b.id && libEntry(b.id)).map(b => b.id === board.id ? board : b); if (!palBoards.some(b => b.id === board.id)) palBoards.push(board);
+  runPal();
+}
+function closePalette() { $('#pal').classList.remove('open'); stage.focus({ preventScroll: true }); }
+function hl(text, q) {
+  const t = String(text); if (!q) return esc(t); const i = norm(t).indexOf(q); if (i < 0) return esc(t);
+  return esc(t.slice(0, i)) + '<mark>' + esc(t.slice(i, i + q.length)) + '</mark>' + esc(t.slice(i + q.length));
+}
+function snippet(text, q) { const t = oneLine(text); const i = norm(t).indexOf(q); if (i < 0) return t.slice(0, 80); const a = Math.max(0, i - 30); return (a ? '…' : '') + t.slice(a, a + 90); }
+function runPal() {
+  const q = norm($('#palIn').value.trim()); palItems = []; let h = '';
+  const boards = [...lib].sort((a, b) => (b.updated || 0) - (a.updated || 0)).filter(b => !q || norm(b.title).includes(q)).slice(0, q ? 12 : 6);
+  if (boards.length) { h += `<div class="pg2"><span>Tableaux</span><span>${boards.length}</span></div>`; for (const b of boards) { palItems.push({ k: 'board', id: b.id }); h += `<div class="pi" data-i="${palItems.length - 1}"><span class="dot" style="width:9px;height:9px;border-radius:3px;background:${b.color && COLORS[b.color] ? COLORS[b.color].h : 'var(--muted)'}"></span><span class="pt">${hl(b.title, q)}</span><span class="ps">${b.count || 0} cartes</span></div>`; } }
+  if (q) {
+    const res = [];
+    for (const b of (palBoards || [board])) for (const c of b.cards) {
+      const t = norm(c.title), bo = norm(c.body), tg = norm(c.tags.join(' '));
+      const sc = t.includes(q) ? 3 : tg.includes(q) ? 2 : bo.includes(q) ? 1 : 0;
+      if (sc) res.push({ sc, b, c });
+    }
+    res.sort((a, b) => b.sc - a.sc || (a.b.id === board.id ? -1 : 1));
+    if (res.length) { h += `<div class="pg2"><span>Cartes</span><span>${res.length}${palBoards ? '' : ' · recherche dans les autres tableaux…'}</span></div>`; for (const r of res.slice(0, 40)) { palItems.push({ k: 'card', bid: r.b.id, id: r.c.id }); h += `<div class="pi" data-i="${palItems.length - 1}"><span class="pt">${hl(cardLabel(r.c), q)}</span><span class="ps">${r.sc === 1 ? hl(snippet(r.c.body, q), q) + ' · ' : ''}${esc(r.b.title)}</span></div>`; } }
+  }
+  const cmds = CMDS().filter(c => !q || norm(c[0]).includes(q)).slice(0, q ? 8 : 6);
+  if (cmds.length) { h += `<div class="pg2"><span>Commandes</span></div>`; for (const c of cmds) { palItems.push({ k: 'cmd', fn: c[2] }); h += `<div class="pi" data-i="${palItems.length - 1}"><span class="pt">${hl(c[0], q)}</span>${c[1] ? `<kbd>${esc(c[1])}</kbd>` : ''}</div>`; } }
+  if (!palItems.length) h = '<p class="note" style="padding:12px">Aucun résultat.</p>';
+  $('#palList').innerHTML = h; palIdx = 0; markPal();
+  $('#palStat').textContent = palBoards ? `${palBoards.length} tableau${palBoards.length > 1 ? 'x' : ''} parcouru${palBoards.length > 1 ? 's' : ''}` : '';
+}
+function markPal() { $$('#palList .pi').forEach(e => e.classList.toggle('on', +e.dataset.i === palIdx)); const on = $('#palList .pi.on'); if (on) on.scrollIntoView({ block: 'nearest' }); }
+async function runPalItem(i) {
+  const it = palItems[i]; if (!it) return; closePalette();
+  if (it.k === 'board') await openBoard(it.id);
+  else if (it.k === 'card') { await openBoard(it.bid); setTimeout(() => { focusItem(it.id); openDetail(); }, 30); }
+  else it.fn();
+}
+$('#palIn').addEventListener('input', runPal);
+$('#palIn').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); palIdx = Math.min(palItems.length - 1, palIdx + 1); markPal(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); palIdx = Math.max(0, palIdx - 1); markPal(); }
+  else if (e.key === 'Enter') { e.preventDefault(); runPalItem(palIdx); }
+});
+$('#palList').addEventListener('click', e => { const p = e.target.closest('[data-i]'); if (p) runPalItem(+p.dataset.i); });
+$('#pal').addEventListener('pointerdown', e => { if (e.target.id === 'pal') closePalette(); });
+
+/* ============================================================
+   Menus, modales, aide
+   ============================================================ */
+function openMenuAt(el, x, y, items) {
+  closeMenus();
+  el.innerHTML = items.map((it, i) => it[0] === 'hr' ? '<hr>' : it[0] === 'mh' ? `<div class="mh">${esc(it[1])}</div>` : it[0] === 'sw' ? `<div style="padding:6px 10px">${swatches(it[1], 'data-mcol')}</div>` : `<button data-mi="${i}" class="${it[2] || ''}">${esc(it[0])}${it[3] ? `<span class="k">${esc(it[3])}</span>` : ''}</button>`).join('');
+  el.classList.add('open');
+  const r = el.getBoundingClientRect(); el.style.left = clamp(x, 8, window.innerWidth - r.width - 8) + 'px'; el.style.top = clamp(y, 8, window.innerHeight - r.height - 8) + 'px';
+  el.onclick = e => { const b = e.target.closest('[data-mi]'); const sw = e.target.closest('[data-mcol]'); if (sw) { const sItem = items.find(i => i[0] === 'sw'); closeMenus(); sItem[2](sw.dataset.mcol); return; } if (!b) return; const it = items[+b.dataset.mi]; closeMenus(); it[1](); };
+}
+function closeMenus() { let was = false; for (const m of $$('.menu.open')) { m.classList.remove('open'); was = true; } return was; }
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu,#menuBtn')) closeMenus(); }, true);
+$('#menuBtn').onclick = e => {
+  if ($('#menu').classList.contains('open')) { closeMenus(); return; }
+  const r = e.currentTarget.getBoundingClientRect();
+  openMenuAt($('#menu'), r.right - 260, r.bottom + 6, [
+    ['Nouveau tableau…', () => showTemplates()], ['Ouvrir un fichier…', openFile, '', 'Ctrl+O'], ['Enregistrer', () => saveFile(false), '', 'Ctrl+S'], ['Enregistrer sous…', () => saveFile(true), '', 'Ctrl+Maj+S'],
+    ['hr'], ['Ajouter une image ou une photo', () => pickImage(), '', 'I'], ['Ajouter un lien', askLink, '', 'L'], ['Nouveau cadre', wrapSelection, '', 'S'],
+    ['hr'], ['Envoyer vers Ramure', () => sendToRamure([...sel])], ['Ouvrir Ramure', () => window.open('../', IN_FRAME ? '_blank' : '_blank')],
+    ['hr'], ['Exporter en PNG', exportPNG], ['Exporter en PDF', exportPDF], ['Exporter en Markdown', exportMD], ['Copier tout en Markdown', () => navigator.clipboard?.writeText(boardMarkdown()).then(() => toast('Tableau copié en Markdown.')).catch(() => toast('Copie impossible ici.'))],
+    ['hr'], ['Thème clair / sombre', toggleTheme], ...(deferredInstall ? [['Installer l’application', async () => { deferredInstall.prompt(); deferredInstall = null; }]] : []), ['Raccourcis et aide', showHelp, '', '?'],
+    ['mh', 'Canopée v' + VERSION]
+  ]);
+};
+function openCtx(x, y, kind) {
+  const p = lastPointerWorld || viewCenterWorld();
+  if (kind === 'canvas') {
+    const clip = memClip || LSJ('canopee:clip', null);
+    openMenuAt($('#ctx'), x, y, [['Nouvelle carte ici', () => addCard(p), '', 'Double-clic'], ['Nouveau cadre ici', () => addSection({ x: p.x - 200, y: p.y - 140, w: 400, h: 280 })], ...(clip ? [['Coller', () => pasteInternal(clip), '', 'Ctrl+V']] : []), ['Ajouter une image ou une photo', () => pickImage()], ['Ajouter un lien', askLink], ['hr'], ['Tout sélectionner', () => setSel([...board.cards.map(c => c.id), ...board.sections.map(s => s.id)]), '', 'Ctrl+A'], ['Tout afficher', fit, '', 'Maj+1']]);
+    return;
+  }
+  const ids = [...sel]; const one = ids.length === 1 ? ids[0] : null; const k = one ? kindOf(one) : 'multi';
+  const items = [];
+  if (one) items.push([k === 'edge' ? 'Modifier le libellé' : 'Modifier', () => openDetail(k === 'card' ? 'body' : k === 'edge' ? 'label' : 'title'), '', 'Entrée']);
+  items.push(['sw', '', col => setColor(ids, col)]);
+  if (k !== 'edge') {
+    items.push(['Dupliquer', duplicateSel, '', 'Ctrl+D'], ['Copier', copySel, '', 'Ctrl+C'], ['Encadrer', wrapSelection, '', 'Ctrl+G']);
+    if (k === 'card') items.push(['Ajouter une image', () => pickImage(one)]);
+    if (k === 'sec') items.push(['Ranger les cartes', () => arrangeSection(secById(one))], ['Ajuster le cadre', () => fitSection(secById(one))]);
+    items.push(['Envoyer vers Ramure', () => sendToRamure(ids)]);
+  }
+  items.push(['hr'], ['Supprimer', deleteSel, 'dng', 'Suppr']);
+  openMenuAt($('#ctx'), x, y, items);
+}
+function showModal(title, html, mount) {
+  $('#mTitle').textContent = title; const host = $('#mBody'); host.innerHTML = ''; const b = document.createElement('div'); b.innerHTML = html; host.appendChild(b);
+  $('#modal').classList.add('open'); if (mount) mount(b);
+}
+function closeModal() { $('#modal').classList.remove('open'); $('#mBody').innerHTML = ''; if (askResolve) { const r = askResolve; askResolve = null; r(null); } stage.focus({ preventScroll: true }); }
+$('#mClose').onclick = closeModal; $('#modal').addEventListener('pointerdown', e => { if (e.target.id === 'modal') closeModal(); });
+let askResolve = null;
+function ask(title, value) {
+  return new Promise(res => {
+    showModal(title, `<input class="inp" id="askIn" value="${esc(value || '')}"><div class="row" style="margin-top:12px"><button class="btn pri" id="askOk">Valider</button><button class="btn" id="askNo">Annuler</button></div>`, m => {
+      askResolve = res; const i = m.querySelector('#askIn'); setTimeout(() => { i.focus(); i.select(); }, 30);
+      const ok = () => { const v = i.value; askResolve = null; closeModal(); res(v); };
+      m.querySelector('#askOk').onclick = ok; m.querySelector('#askNo').onclick = closeModal; i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ok(); } };
+    });
+  });
+}
+function showHelp() {
+  const K = [['Double-clic / double tape', 'Nouvelle carte à cet endroit'], ['N', 'Nouvelle carte'], ['S', 'Nouveau cadre (autour de la sélection)'], ['Ctrl+G', 'Encadrer la sélection'], ['C', 'Outil relier (ou glisser le rond au bord d’une carte)'], ['Glisser le rond dans le vide', 'Crée une carte reliée'], ['I / L', 'Image ou photo / lien'], ['Entrée', 'Modifier la carte sélectionnée'], ['Suppr', 'Supprimer la sélection'], ['Ctrl+D', 'Dupliquer'], ['Ctrl+C / X / V', 'Copier, couper, coller (texte, lien ou image aussi)'], ['Flèches', 'Déplacer la sélection (Maj : plus vite)'], ['Maj+clic, glisser dans le vide', 'Sélection multiple'], ['Espace maintenu, H, clic molette', 'Déplacer la vue'], ['Molette / Ctrl+molette', 'Défiler / zoomer'], ['Maj+1, Maj+2, 0', 'Tout afficher, zoom sur la sélection, 100 %'], ['Ctrl+K', 'Rechercher dans tous les tableaux'], ['Ctrl+S, Ctrl+O', 'Enregistrer, ouvrir'], ['Ctrl+Z / Ctrl+Y', 'Annuler / rétablir'], ['Ctrl+\\ / Ctrl+I', 'Barre latérale / panneau de détail'], ['M', 'Minicarte']];
+  showModal('Raccourcis et aide', `<table class="keys">${K.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>
+  <h3 style="font-size:15px;margin:18px 0 6px">Où sont mes données ?</h3><p class="note">Chaque tableau a un brouillon sur cet appareil (enregistré en continu). Pour le retrouver sur un autre appareil, enregistre-le dans un fichier <b>.canopee</b> dans ton OneDrive (Ctrl+S). Les images sont intégrées au fichier, réduites à 1 600 px. Rien n’est envoyé sur internet.</p>
+  <h3 style="font-size:15px;margin:18px 0 6px">Passerelle avec Ramure</h3><p class="note">« Envoyer vers Ramure » transforme un cadre, une sélection ou le tableau en carte mentale : les flèches entre cartes deviennent la hiérarchie. Dans Ramure, « Envoyer vers Canopée » fait l’inverse : chaque branche principale devient une carte. Tu peux aussi ouvrir directement un fichier .ramure ici.</p>
+  <h3 style="font-size:15px;margin:18px 0 6px">Markdown dans les cartes</h3><p class="note"><code>- [ ] tâche</code> (case à cocher, cliquable sur la carte), <code>**gras**</code>, <code>*italique*</code>, <code># titre</code>, <code>- liste</code>, <code>&gt; citation</code>, <code>[texte](https://…)</code>, tableaux <code>| a | b |</code>.</p>`);
+}
+
+/* ---------- Divers ---------- */
+function toggleMini() { showMini = !showMini; LS.set('canopee:mini', showMini ? '1' : '0'); renderMini(); }
+$('#tools').addEventListener('click', e => {
+  const t = e.target.closest('[data-tool]'); if (t) { setTool(tool === t.dataset.tool && t.dataset.tool !== 'select' ? 'select' : t.dataset.tool); return; }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  ({ image: () => pickImage(), link: askLink, zout: () => zoomCenter(1 / 1.2), zin: () => zoomCenter(1.2), z100: () => zoomCenter(1 / view.k), fit, mini: toggleMini })[a.dataset.act]();
+});
+$('#undoBtn').onclick = doUndo; $('#redoBtn').onclick = doRedo; $('#saveBtn').onclick = () => saveFile(false);
+$('#newCardBtn').onclick = () => newCardHere();
+$('#toRamure').addEventListener('click', e => { e.preventDefault(); window.open('../', '_blank'); });
+window.addEventListener('resize', () => { renderMini(); fitTitle(); });
+new ResizeObserver(() => renderMini()).observe(stage);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+window.addEventListener('beforeunload', e => { if (board) { board.view = { ...view }; idbPut('b', board.id, board); } });
+
+/* ---------- Démarrage ---------- */
+const WELCOME = () => {
+  const s = { id: uid('s'), x: 0, y: 0, w: 1010, h: 540, title: 'Prise en main', color: 'green' };
+  const c1 = { id: uid('c'), type: 'text', x: 24, y: 32, w: 270, title: 'Bienvenue dans Canopée', body: 'Un tableau libre pour **organiser un projet** ou **faire de la veille** : notes, photos, liens SharePoint, cadres et flèches.\n\n- Double-clic : nouvelle carte\n- Ctrl+K : tout retrouver\n- Ctrl+S : enregistrer dans OneDrive', tags: ['astuce'], color: 'green' };
+  const c2 = { id: uid('c'), type: 'text', x: 364, y: 32, w: 270, title: 'Cartes', body: 'Clique pour sélectionner, glisse pour déplacer, double-clic pour modifier.\n\nLe texte accepte le Markdown :\n- [x] cases à cocher\n- [ ] cliquables sur la carte', tags: [] };
+  const c3 = { id: uid('c'), type: 'text', x: 716, y: 32, w: 270, title: 'Relier', body: 'Survole une carte, puis glisse le **rond** sur son bord droit vers une autre carte.\n\nGlisse-le dans le vide pour créer une carte reliée.', tags: [] };
+  const c4 = { id: uid('c'), type: 'text', x: 364, y: 300, w: 270, title: 'Cadres', body: 'Un cadre regroupe des cartes. Déplace-le par son nom : ses cartes suivent.\n\nSélectionne des cartes puis **Ctrl+G** pour les encadrer.', tags: [] };
+  const c5 = { id: uid('c'), type: 'text', x: 716, y: 300, w: 270, title: 'Ramure', body: 'Un cadre peut devenir une carte mentale : clic droit → **Envoyer vers Ramure**. Les flèches deviennent la hiérarchie.', tags: ['passerelle'], color: 'teal' };
+  return normalizeBoard({ id: uid('b'), title: 'Bienvenue', sections: [s], cards: [c1, c2, c3, c4, c5], edges: [{ id: uid('e'), from: c2.id, to: c3.id, label: 'puis', arrow: 'end' }, { id: uid('e'), from: c3.id, to: c5.id, label: '', arrow: 'end' }] });
+};
+async function init() {
+  applyTheme();
+  if (IN_FRAME) { const b = $('#banner'); b.textContent = 'Aperçu de test : enregistrement de fichiers et exports bloqués ici. N’y mets aucune donnée ENGIE. Utilise la version installée depuis GitHub Pages.'; b.style.display = 'block'; setTimeout(() => b.style.display = 'none', 9000); }
+  if (SMALL() || LS.get('canopee:side') === '0') $('#app').classList.add('noside');
+  if (!SMALL() && LS.get('canopee:det') === '1') det.classList.add('open');
+  setTool('select'); updateUndo();
+  let ok = false; const last = LS.get('canopee:last');
+  for (const id of [last, ...lib.map(b => b.id)].filter(Boolean)) { const d = await idbGet('b', id); if (d) { setBoard(normalizeBoard(d)); ok = true; break; } }
+  if (!ok) { const w = WELCOME(); lib.push({ id: w.id, title: w.title, folder: '', updated: w.updated, count: w.cards.length }); saveLib(); await idbPut('b', w.id, w); setBoard(w); fit(); }
+  renderLib();
+  if (!IN_FRAME && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  checkInbox();
+}
+window.__canopee = { get board() { return board; }, get sel() { return [...sel]; }, get lib() { return lib; }, get view() { return view; }, H, setSel, addCard, addSection, addEdge, createBoard, openBoard, fromRamure, ramureFrom, addConverted, boardMarkdown, renderToCanvas, buildPdf, openFromFile, md, fit, toWorld, checkInbox, saveDraft, arrangeSection, deleteIds, doUndo, doRedo, sendToRamure, wrapSelection, pxPut, pxTake, openPalette, rectOf };
+init();
+})();
+</script>
+</body>
+</html>
